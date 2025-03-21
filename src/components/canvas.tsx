@@ -27,7 +27,9 @@ export const Canvas = ({
     api.controller.drawTransparencyGrid()
 
     const handlePointerUp = () => {
-      window.addEventListener("pointerup", () => isDrawing.current = false)
+      isDrawing.current = false
+      api.canvasDrawStack.commit()
+      console.debug("stack", api.canvasDrawStack.debug())
     }
 
     window.addEventListener("pointerup", handlePointerUp)
@@ -49,7 +51,10 @@ export const Canvas = ({
           api.controller.pencilTool(x, y)
           isDrawing.current = true
         }}
-        onPointerUp={() => isDrawing.current=false}
+        onPointerUp={() => {
+          isDrawing.current=false
+          api.canvasDrawStack.commit()
+        }}
         onPointerMove={(e) => {
           if (isDrawing.current) {
             api.controller.pencilTool(e.clientX, e.clientY)

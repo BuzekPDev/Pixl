@@ -38,14 +38,25 @@ export class CanvasDrawStack {
   }
 
   undo () {
-    if (this.index > 0) {
+    if (this.index >= 0) {
       this.index--
+      return this.stack[this.index+1]
     }
+    return null
   }
 
   redo () {
     if (this.index < this.stack.length - 1) { 
       this.index++
+      return this.stack[this.index]
+    }
+    return null
+  }
+
+  debug () {
+    return {
+      stack: this.stack,
+      stroke: this.currentStroke
     }
   }
 } 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RGBA } from "../classes/ColorProcessor";
 
 export interface CanvasToolsConfig {
   colors: ColorOptions;
@@ -7,10 +8,10 @@ export interface CanvasToolsConfig {
 }
 
 export interface ColorOptions {
-  palette: Color[];
-  current: Color;
-  setCurrent: (color: Color) => void;
-  setPalette: (color: Color, index: number) => void
+  palette: RGBA[];
+  current: RGBA;
+  setCurrent: (color: RGBA) => void;
+  setPalette: (color: RGBA, index: number) => void
 }
 
 type ColorState = Omit<ColorOptions, "setCurrent" | "setPalette">
@@ -23,14 +24,12 @@ export interface ToolOptions {
 }
 
 
-export type Color = string
-
 export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   const [colorOptions, setColorOptions] =
     useState<ColorState>({
-      palette: [],
-      current: ""
+      palette: [[0, 0 ,0, 1], [255, 255, 255, 1], [0, 0, 0, 0]],
+      current: [0, 0, 0, 1]
     })
 
   const [pencilOptions, setPencilOptions] =
@@ -46,11 +45,11 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
   return {
     colors: {
       ...colorOptions,
-      setCurrent: (color: Color) => setColorOptions(c => ({ ...c, current: color })),
-      setPalette: (color: Color, index: number) => 
+      setCurrent: (color: RGBA) => setColorOptions(c => ({ ...c, current: color })),
+      setPalette: (color: RGBA, index: number) => 
         setColorOptions(c => ({ 
           ...c, 
-          palette: c.palette.map((c: Color, i: number) => i === index ? color : c) 
+          palette: c.palette.map((c: RGBA, i: number) => i === index ? color : c) 
         }))
     },
     pencil: {

@@ -1,9 +1,8 @@
-export const getHoverCoordinates = (clientX: number, clientY: number, ctx: CanvasRenderingContext2D, canvasViewportConfig: any, toolSize: ToolSize) => {
-  const { dimensions } = canvasViewportConfig
-  const { left, top, width, height } = (ctx.canvas as HTMLCanvasElement).getBoundingClientRect()
+import { CanvasDimensions } from "../hooks/useCanvasViewportConfig"
 
-  const scaleX = width / dimensions.width
-  const scaleY = height / dimensions.height
+export const getHoverCoordinates = (clientX: number, clientY: number, dimensions: CanvasDimensions, ctx: CanvasRenderingContext2D, toolSize: ToolSize) => {
+  const {scaleX, scaleY} = dimensions;
+  const { left, top, width, height } = (ctx.canvas as HTMLCanvasElement).getBoundingClientRect()
 
   const relativeClientX = Math.floor((clientX - left) * (dimensions.width / width))
   const relativeClientY = Math.floor((clientY - top) * (dimensions.height / height))

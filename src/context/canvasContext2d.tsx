@@ -6,7 +6,13 @@ import { CanvasDrawStack } from "../classes/CanvasDrawStack";
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor";
 
 export interface CanvasContext {
-  setup: (canvasRef: RefObject<HTMLCanvasElement | null>, hoverOverlayCanvasRef: RefObject<HTMLCanvasElement | null>, width: number, height: number) => void,
+  setup: (
+    canvasRef: RefObject<HTMLCanvasElement | null>, 
+    hoverOverlayCanvasRef: RefObject<HTMLCanvasElement | null>, 
+    transparencyGridCanvasRef: RefObject<HTMLCanvasElement | null>,
+    width: number, 
+    height: number
+  ) => void,
   controller: CanvasController;
   canvasDrawStack: CanvasDrawStack;
   canvasToolsConfig: CanvasToolsConfig;
@@ -17,7 +23,9 @@ export interface CanvasController {
   drawTransparencyGrid: () => void;
   pencilTool: (clientX: number, clientY: number) => void;
   hoverMask: (clientX: number, clientY: number) => void;
-  clearHoverMask: () => void
+  clearHoverMask: () => void;
+  undo: () => void;
+  redo: () => void;
 }
 
 const canvasContext = createContext<CanvasContext | null>(null)
@@ -32,17 +40,17 @@ export const CanvasProvider = ({
   const colorProcessor = useMemo(() => new ColorProcessor(), [])
 
   const {pencil, eraser, colors} = canvasToolsConfig
-  const {dimensions} = canvasViewportConfig
 
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
+  const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
 
   const drawTransparencyGrid = () => {
-    if (!canvasRenderingContext.current) {
+    if (!transparencyGridCanvaRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
 
-    const ctx = canvasRenderingContext.current
+    const ctx = transparencyGridCanvaRenderingContext.current
     const canvas = ctx.canvas as HTMLCanvasElement
 
     const { width, height } = canvas.getBoundingClientRect();
@@ -64,7 +72,6 @@ export const CanvasProvider = ({
 
     const pattern = ctx.createPattern(patternCanvas, 'repeat');
     ctx.fillStyle = pattern as CanvasPattern;
-
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -85,7 +92,7 @@ export const CanvasProvider = ({
 
     const imageData = ctx.getImageData(x, y, toolSizeX, toolSizeY)
 
-    ctx.fillStyle = "rgb(255, 0, 0, 1)"
+    ctx.fillStyle = "rgb(255, 0, 0, 255)"
     ctx.fillRect(x, y, toolSizeX, toolSizeY)
 
     const scaledLength = (toolSizeX*toolSizeY) / (scaleX * scaleY)
@@ -99,10 +106,15 @@ export const CanvasProvider = ({
         imageData.data[index+3]
       ]
 
-      const newColorData = canvasToolsConfig.colors.current
-
+      const newColorData: RGBA = [255, 0, 0, 255]//canvasToolsConfig.colors.current
+      
       const difference = colorProcessor.getRGBDifference(previousColorData, newColorData)
 
+      console.debug(
+        "prevData", previousColorData, 
+        "\nnewData" ,newColorData,
+        "\ndiff", difference
+      )
       canvasDrawStack.push({
         x: x/scaleX,
         y: y/scaleY,
@@ -142,28 +154,86 @@ export const CanvasProvider = ({
     ctx.clearRect(0, 0, width, height)
   }
 
+  const undo = () => {
+    if (!canvasRenderingContext.current) {
+      throw new Error("Set up the canvas first")
+    }
+
+    const ctx = canvasRenderingContext.current
+    const {dimensions} = canvasViewportConfig
+
+    const previousFrame = canvasDrawStack.undo();
+    if (!previousFrame) return
+
+    for (let i = 0; i < previousFrame.length; i++) {
+      const x = previousFrame[i].x * dimensions.scaleX;
+      const y = previousFrame[i].y * dimensions.scaleY;
+      const currentColor: RGBA = [
+        ctx.getImageData(x,y,1,1).data[0],
+        ctx.getImageData(x,y,1,1).data[1],
+        ctx.getImageData(x,y,1,1).data[2],
+        ctx.getImageData(x,y,1,1).data[3]
+      ]
+      const [r,g,b,a] = colorProcessor.revertRGBADifference(currentColor, previousFrame[i].rgb)
+      ctx.fillStyle = `rgb(${r},${g},${b},${a})`
+      ctx.clearRect(x, y, 10, 10)
+      ctx.fillRect(x,y,10,10)
+    }
+  }
+
+  const redo = () => {
+    if (!canvasRenderingContext.current) {
+      throw new Error("Set up the canvas first")
+    }
+
+    const ctx = canvasRenderingContext.current
+    const {dimensions} = canvasViewportConfig
+
+    const nextFrame = canvasDrawStack.redo();
+    if (!nextFrame) return
+
+    for (let i = 0; i < nextFrame.length; i++) {
+      const x = nextFrame[i].x * dimensions.scaleX;
+      const y = nextFrame[i].y * dimensions.scaleY;
+      const currentColor: RGBA = [
+        ctx.getImageData(x,y,1,1).data[0],
+        ctx.getImageData(x,y,1,1).data[1],
+        ctx.getImageData(x,y,1,1).data[2],
+        ctx.getImageData(x,y,1,1).data[3]
+      ]
+      const [r,g,b,a] = colorProcessor.applyRGBADifference(currentColor, nextFrame[i].rgb)
+      ctx.fillStyle = `rgb(${r},${g},${b},${a})`
+      ctx.clearRect(x, y, 10, 10)
+      ctx.fillRect(x,y,10,10)
+    }
+  }
+
   return (
     <canvasContext.Provider
       value={{
-        setup: (canvasRef, hoverOverlayCanvasRef, width, height) => {
+        setup: (canvasRef, hoverOverlayCanvasRef, transparencyGridCanvasRef, width, height) => {
           if (canvasRef.current) {
             const canvasHeight = canvasRef.current?.getBoundingClientRect().height
             const canvasWidth = canvasRef.current?.getBoundingClientRect().width
-            dimensions.set(width, height, canvasWidth, canvasHeight)
+            canvasViewportConfig.dimensions.set(width, height, canvasWidth, canvasHeight)
             canvasRenderingContext.current = canvasRef.current.getContext("2d")
           } else {
-            dimensions.set(width, height, width, height)
+            canvasViewportConfig.dimensions.set(width, height, width, height)
           }
           if (hoverOverlayCanvasRef.current) {
             hoverOverlayCanvasRenderingContext.current = hoverOverlayCanvasRef.current.getContext("2d")
           }
-          return
+          if (transparencyGridCanvasRef.current) {
+            transparencyGridCanvaRenderingContext.current = transparencyGridCanvasRef.current.getContext("2d")
+          }
         },
         controller: {
           drawTransparencyGrid,
           pencilTool,
           hoverMask,
           clearHoverMask,
+          undo,
+          redo
         },
         canvasDrawStack,
         canvasToolsConfig,

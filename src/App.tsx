@@ -35,7 +35,7 @@ function App() {
     
   }, [])
 
-  const { canvasToolsConfig } = useCanvasApi()
+  const { canvasToolsConfig, controller } = useCanvasApi()
 
   const createUser = async ({username, password}: {
     username: string;
@@ -65,6 +65,8 @@ function App() {
       />
       <div>
         <input type="range" max={10} min={1} value={canvasToolsConfig.pencil.width} onChange={(e) => canvasToolsConfig.pencil.setWidth(parseInt(e.target.value))}/>
+        <button onClick={() => controller.undo()}>undo</button>
+        <button onClick={() => controller.redo()}>redo</button>
       </div>
       <form action="post"
         onSubmit={(e: FormEvent<HTMLFormElement>) => {

@@ -7,6 +7,8 @@ export const Canvas = ({
 }: CanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hoverOverlayCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const transparencyGridCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
   const api = useCanvasApi()
   const isDrawing = useRef(false)
 
@@ -22,14 +24,13 @@ export const Canvas = ({
   }, [])
 
   useEffect(() => {
-    api.setup(canvasRef, hoverOverlayCanvasRef, width, height)
+    api.setup(canvasRef, hoverOverlayCanvasRef, transparencyGridCanvasRef, width, height)
 
     api.controller.drawTransparencyGrid()
 
     const handlePointerUp = () => {
       isDrawing.current = false
       api.canvasDrawStack.commit()
-      console.debug("stack", api.canvasDrawStack.debug())
     }
 
     window.addEventListener("pointerup", handlePointerUp)
@@ -71,6 +72,12 @@ export const Canvas = ({
         width={canvasDimensions.width}
         height={canvasDimensions.height} 
         ref={hoverOverlayCanvasRef}
+      ></canvas>
+      <canvas
+        className="w-full h-full absolute top-0 left-0 pointer-events-none"
+        width={canvasDimensions.width}
+        height={canvasDimensions.height} 
+        ref={transparencyGridCanvasRef}
       ></canvas>
     </div>
   )

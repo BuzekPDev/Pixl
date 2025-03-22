@@ -14,18 +14,17 @@ export const Canvas = ({
 
   const canvasDimensions = useMemo(() => {
     // aspect ratio of the user-selected dimensions
-    const canvasAspectRatio = height/width
+    const canvasAspectRatio = width/height
 
     // 640 is a placeholder size, I might change it later
     return {
-      width: 640,
-      height: 640 * canvasAspectRatio,
+      width: 640 * canvasAspectRatio,
+      height: 640,
       canvasAspectRatio
     }
   }, [width, height])
 
   useEffect(() => {
-    console.debug(canvasDimensions.canvasAspectRatio)
     api.setup(
       canvasRef, 
       hoverOverlayCanvasRef, 
@@ -46,7 +45,7 @@ export const Canvas = ({
 
     return () => window.removeEventListener("pointerup", handlePointerUp)
     // api.controller.pencilDraw()
-  }, [])
+  }, [width, height])
 
   return (
     <div className="relative w-fit">

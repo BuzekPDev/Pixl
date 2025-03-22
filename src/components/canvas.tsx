@@ -42,10 +42,15 @@ export const Canvas = ({
   return (
     <div className="relative">
       <canvas
+        className="w-full h-full -z-10 absolute top-0 left-0 pointer-events-none"
+        width={canvasDimensions.width}
+        height={canvasDimensions.height} 
+        ref={transparencyGridCanvasRef}
+      ></canvas>
+      <canvas
         width={canvasDimensions.width}
         height={canvasDimensions.height} 
         ref={canvasRef}
-        className="bg-white"
         onPointerDown={(e) => {
           const x = e.clientX //- e.currentTarget.getBoundingClientRect().left
           const y = e.clientY //- e.currentTarget.getBoundingClientRect().top
@@ -72,12 +77,6 @@ export const Canvas = ({
         width={canvasDimensions.width}
         height={canvasDimensions.height} 
         ref={hoverOverlayCanvasRef}
-      ></canvas>
-      <canvas
-        className="w-full h-full absolute top-0 left-0 pointer-events-none"
-        width={canvasDimensions.width}
-        height={canvasDimensions.height} 
-        ref={transparencyGridCanvasRef}
       ></canvas>
     </div>
   )

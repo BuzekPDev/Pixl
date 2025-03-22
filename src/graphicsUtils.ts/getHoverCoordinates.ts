@@ -7,9 +7,9 @@ export const getHoverCoordinates = (clientX: number, clientY: number, dimensions
   const relativeClientX = Math.floor((clientX - left) * (dimensions.width / width))
   const relativeClientY = Math.floor((clientY - top) * ((dimensions.height) / height))
 
-  const x = Math.floor(relativeClientX-Math.floor(toolSize/2)) 
-  const y = Math.floor((relativeClientY / aspectRatio)-Math.floor(toolSize/2))
-
+  const x = Math.floor((relativeClientX)-Math.floor(toolSize/2)) 
+  const y = Math.floor((relativeClientY)-Math.floor(toolSize/2))
+  
   return {
     x,
     y,

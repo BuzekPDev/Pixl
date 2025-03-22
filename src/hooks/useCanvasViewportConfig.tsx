@@ -19,7 +19,7 @@ export interface CanvasDimensionsController extends CanvasDimensions {
     canvasWidth: number,
     canvasHeight: number,
     aspectRatio: number
-  ) => void
+  ) => void;
 }
 
 export const useCanvasViewportConfig = () => {
@@ -44,9 +44,10 @@ export const useCanvasViewportConfig = () => {
         aspectRatio: number
       ) => {
         const scaleX = canvasWidth / width;
-        const scaleY = canvasHeight / (height * aspectRatio);
+        const scaleY = canvasHeight / height;
         setDimensions({ width, height, scaleX, scaleY, aspectRatio })
       },
+
     }
   }
 }

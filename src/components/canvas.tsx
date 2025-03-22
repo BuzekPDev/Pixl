@@ -14,17 +14,26 @@ export const Canvas = ({
 
   const canvasDimensions = useMemo(() => {
     // aspect ratio of the user-selected dimensions
-    const canvasAspectRatio = width/height
+    const canvasAspectRatio = height/width
 
     // 640 is a placeholder size, I might change it later
     return {
       width: 640,
-      height: 640 * canvasAspectRatio
+      height: 640 * canvasAspectRatio,
+      canvasAspectRatio
     }
-  }, [])
+  }, [width, height])
 
   useEffect(() => {
-    api.setup(canvasRef, hoverOverlayCanvasRef, transparencyGridCanvasRef, width, height)
+    console.debug(canvasDimensions.canvasAspectRatio)
+    api.setup(
+      canvasRef, 
+      hoverOverlayCanvasRef, 
+      transparencyGridCanvasRef, 
+      width, 
+      height,
+      canvasDimensions.canvasAspectRatio
+    )
 
     api.controller.drawTransparencyGrid()
 
@@ -40,7 +49,7 @@ export const Canvas = ({
   }, [])
 
   return (
-    <div className="relative">
+    <div className="relative w-fit">
       <canvas
         className="w-full h-full -z-10 absolute top-0 left-0 pointer-events-none"
         width={canvasDimensions.width}
@@ -48,6 +57,7 @@ export const Canvas = ({
         ref={transparencyGridCanvasRef}
       ></canvas>
       <canvas
+        // className="bg-white"
         width={canvasDimensions.width}
         height={canvasDimensions.height} 
         ref={canvasRef}

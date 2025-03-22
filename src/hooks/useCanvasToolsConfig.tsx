@@ -9,8 +9,8 @@ export interface CanvasToolsConfig {
 
 export interface ColorOptions {
   palette: RGBA[];
-  current: RGBA;
-  setCurrent: (color: RGBA) => void;
+  current: number;
+  setCurrent: (index: number) => void;
   setPalette: (color: RGBA, index: number) => void
 }
 
@@ -28,8 +28,8 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   const [colorOptions, setColorOptions] =
     useState<ColorState>({
-      palette: [[0, 0 ,0, 1], [255, 255, 255, 1], [0, 0, 0, 0]],
-      current: [0, 0, 0, 1]
+      palette: [[0, 0 ,0, 255], [255, 255, 255, 255], [0, 0, 0, 0]],
+      current: 0
     })
 
   const [pencilOptions, setPencilOptions] =
@@ -45,7 +45,7 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
   return {
     colors: {
       ...colorOptions,
-      setCurrent: (color: RGBA) => setColorOptions(c => ({ ...c, current: color })),
+      setCurrent: (index: number) => setColorOptions(c => ({ ...c, current: index })),
       setPalette: (color: RGBA, index: number) => 
         setColorOptions(c => ({ 
           ...c, 

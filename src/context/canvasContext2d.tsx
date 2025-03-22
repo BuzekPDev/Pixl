@@ -133,7 +133,6 @@ export const CanvasProvider = ({
         x: x + (i % toolSizeX),
         y: y + Math.floor(i / toolSizeY),
         rgb: difference,
-        width: 1
       })
     }
   }

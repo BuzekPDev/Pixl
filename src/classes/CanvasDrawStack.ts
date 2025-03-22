@@ -14,9 +14,9 @@ export class CanvasDrawStack {
 
   push (pixel: PixelData) {
     const [r, g, b, a] = pixel.rgb
+    
     // prevent overdraw
-    // rgba is 0 0 0 0 if no color or opacity change
-    if (r + g + b + a === 0) return 
+    if (r === 0 && g === 0 && b === 0 && a === 0) return
 
     this.currentStroke.push(pixel)
   }

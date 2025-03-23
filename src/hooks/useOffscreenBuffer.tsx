@@ -7,27 +7,18 @@ export interface OffscreenBuffer {
   hoverOverlayBuffer: OffscreenCanvasRenderingContext2D;
 }
 
-export const useOffscreenBuffer = (dimensions: Dimensions) => {
-  const drawingBuffer = useMemo(() => 
-    new OffscreenCanvas(
-      dimensions.width,
-      dimensions.height
-    ).getContext("2d")
-  ,[dimensions]);
+export const useOffscreenBuffer = () => {
+  const drawingBuffer = useMemo(() =>
+    new OffscreenCanvas(0, 0).getContext("2d"),
+  []);
 
   const transparencyGridBuffer = useMemo(() =>
-    new OffscreenCanvas(
-      dimensions.width,
-      dimensions.height
-    ).getContext("2d"),
-    [dimensions]);
+    new OffscreenCanvas(0, 0).getContext("2d"),
+  []);
 
   const hoverOverlayBuffer = useMemo(() =>
-    new OffscreenCanvas(
-      dimensions.width,
-      dimensions.height
-    ).getContext("2d"),
-    [dimensions]);
+    new OffscreenCanvas(0, 0).getContext("2d"),
+  []);
 
   return {
     drawingBuffer,

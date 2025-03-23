@@ -50,7 +50,7 @@ export const CanvasProvider = ({
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
-  const offscreenBuffer = useOffscreenBuffer(canvasViewportConfig.dimensions.ref.current.resolution)
+  const offscreenBuffer = useOffscreenBuffer()
 
   const mouseCoordinates = useRef({
     prevClientX: 0,
@@ -298,6 +298,7 @@ export const CanvasProvider = ({
     const scaledBufferY = bufferHeight * scaleY
 
     const previousFrame = canvasDrawStack.undo();
+
     if (!previousFrame) return
 
     const fullBuffer = buffer.getImageData(0, 0, bufferWidth, bufferHeight)

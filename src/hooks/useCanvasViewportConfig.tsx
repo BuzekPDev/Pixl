@@ -14,6 +14,8 @@ export interface CanvasDimensions {
   size: Dimensions;
   position: Position; 
   resolution: Dimensions;
+  aspectRatio: number;
+  zoom: number
 }
 
 export interface Dimensions {
@@ -32,7 +34,9 @@ export const useCanvasViewportConfig = () => {
     viewport: {width: 0, height: 0},
     size: {width: 0, height: 0},
     position: {x: 0, y: 0},
-    resolution: {width: 0, height: 0}
+    resolution: {width: 0, height: 0},
+    aspectRatio: 1,
+    zoom: 1
   })
 
   return {
@@ -42,7 +46,11 @@ export const useCanvasViewportConfig = () => {
         (Object.entries(dims) as Array<[K, CanvasDimensions[K]]>)
         .forEach(([key, val]) => {
           dimensions.current[key] = val
-        })
+        }) 
+        if ((dims as CanvasDimensions)?.resolution) {
+          const {width, height} = (dims as CanvasDimensions).resolution
+          dimensions.current.aspectRatio = height / width
+        }
       }
     }
   }

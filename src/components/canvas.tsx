@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCanvasApi } from "../context/canvasContext2d";
 
 export const Canvas = ({
@@ -12,6 +12,8 @@ export const Canvas = ({
   const api = useCanvasApi()
   const isDrawing = useRef(false)
 
+  const [op, setOp] = useState("pencilTool")
+
   useEffect(() => {
     api.setup(
       canvasRef, 
@@ -22,7 +24,7 @@ export const Canvas = ({
       {x: 20, y: 20},
       {width: 64, height: 64}
     )
-
+  
     api.controller.drawTransparencyGrid()
 
     const handlePointerUp = () => {
@@ -30,12 +32,16 @@ export const Canvas = ({
       api.canvasDrawStack.commit()
     }
 
+
     window.addEventListener("pointerup", handlePointerUp)
 
-    return () => window.removeEventListener("pointerup", handlePointerUp)
+    return () => {
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
   }, [])
 
   return (
+    <>
     <div className="relative w-fit">
       <canvas
         className="w-full h-full -z-10 absolute top-0 left-0 pointer-events-none"
@@ -50,22 +56,25 @@ export const Canvas = ({
         onPointerDown={(e) => {
           const x = e.clientX 
           const y = e.clientY 
-          api.controller.pencilTool(x, y)
+          api.controller[op](x, y)
           isDrawing.current = true
         }}
         onPointerUp={() => {
           isDrawing.current=false
           api.canvasDrawStack.commit()
+          api.resetMousePosition()
         }}
         onPointerMove={(e) => {
           if (isDrawing.current) {
-            api.controller.pencilTool(e.clientX, e.clientY)
+            api.controller[op](e.clientX, e.clientY)
+            // api.controller.moveDrawingArea(e.clientX, e.clientY)
           }
           api.controller.hoverMask(e.clientX, e.clientY)
         }}
         onPointerOut={() =>
           api.controller.clearHoverMask()
         }
+        onWheel={(e) => api.controller.zoom(e.deltaY)}
       >
       </canvas>
       <canvas
@@ -75,6 +84,9 @@ export const Canvas = ({
         ref={hoverOverlayCanvasRef}
       ></canvas>
     </div>
+    <button onClick={() => setOp("pencilTool")}>pencil</button>
+    <button onClick={() => setOp("move")}>hand</button>
+    </>
   )
 }
 

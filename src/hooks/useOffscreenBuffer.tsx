@@ -1,5 +1,4 @@
-import { useEffect, useMemo } from "react";
-import { CanvasDimensions, Dimensions } from "./useCanvasViewportConfig";
+import { useMemo } from "react";
 
 export interface OffscreenBuffer {
   transparencyGridBuffer: OffscreenCanvasRenderingContext2D;

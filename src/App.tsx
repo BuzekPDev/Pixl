@@ -1,4 +1,4 @@
-import { FormEvent, useEffect } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import './App.css'
 import { Canvas } from './components/canvas'
 import { useCanvasApi } from './context/canvasContext2d'
@@ -9,6 +9,11 @@ const path = (pathName: string = "") => api + pathName
 
 function App() {
 
+  const [dims, setDims] = useState({
+    w: 64,
+    h: 64
+  })
+  
   useEffect(() => {
 
     // fetch(api, {
@@ -35,8 +40,8 @@ function App() {
     
   }, [])
 
-  const { canvasToolsConfig, controller } = useCanvasApi()
-
+  const { canvasToolsConfig, controller, canvasViewportConfig, changeDimensions } = useCanvasApi()
+  const { colors } = canvasToolsConfig
   const createUser = async ({username, password}: {
     username: string;
     password: string;
@@ -60,13 +65,45 @@ function App() {
       <Canvas
         canvasWidth={640}
         canvasHeight={640}
-        width={64}
-        height={64}
+        width={dims.w}
+        height={dims.h}
       />
       <div>
+        <label htmlFor="width">width</label>
+        <input 
+          // min={1}
+          step={32}
+          type="number" 
+          name='width' 
+          value={dims.w} 
+          onChange={(e) => {
+            const w = parseInt(e.target.value)
+            changeDimensions({resolution: {width: w, height: dims.h }})
+            // setDims(d => ({...d, w}))
+          }}
+        />
+        <label htmlFor="height">height</label>
+        <input 
+          // min={1}
+          step={32}
+          type="number" 
+          name='height' 
+          value={dims.h} 
+          onChange={(e) => {
+            const h = parseInt(e.target.value)
+            changeDimensions({resolution: {width: dims.w, height: h }})
+            // setDims(d => ({...d, h}))
+          }}
+        />
         <input type="range" max={10} min={1} value={canvasToolsConfig.pencil.width} onChange={(e) => canvasToolsConfig.pencil.setWidth(parseInt(e.target.value))}/>
         <button onClick={() => controller.undo()}>undo</button>
         <button onClick={() => controller.redo()}>redo</button>
+        <button className='text-red-400' onClick={() => colors.setCurrent(0)}>red</button>
+        <button className='text-green-400' onClick={() => colors.setCurrent(1)}>green</button>
+        <button className='text-blue-400' onClick={() => colors.setCurrent(2)}>blue</button>
+        <button>eraser</button>
+        <button onClick={() => controller.moveDrawingArea(1, 0)}>move 1 px right</button>
+        <button onClick={() => controller.moveDrawingArea(0, 1)}>move 1 px down</button>
       </div>
       <form action="post"
         onSubmit={(e: FormEvent<HTMLFormElement>) => {

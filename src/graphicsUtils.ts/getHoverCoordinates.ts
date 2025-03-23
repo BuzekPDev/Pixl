@@ -1,4 +1,3 @@
-import { zoom } from "../context/canvasContext2d"
 import { Position } from "../hooks/useCanvasViewportConfig"
 
 export const getHoverCoordinates = (
@@ -6,6 +5,7 @@ export const getHoverCoordinates = (
   clientY: number, 
   position: Position,
   aspectRatio: number,
+  zoom: number,
   ctx: CanvasRenderingContext2D, 
   toolSize: ToolSize
 ) => {

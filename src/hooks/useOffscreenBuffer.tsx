@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { CanvasDimensions } from "./useCanvasViewportConfig";
+import { useEffect, useMemo } from "react";
+import { CanvasDimensions, Dimensions } from "./useCanvasViewportConfig";
 
 export interface OffscreenBuffer {
   transparencyGridBuffer: OffscreenCanvasRenderingContext2D;
@@ -7,13 +7,13 @@ export interface OffscreenBuffer {
   hoverOverlayBuffer: OffscreenCanvasRenderingContext2D;
 }
 
-export const useOffscreenBuffer = (dimensions: CanvasDimensions) => {
-  const drawingBuffer = useMemo(() =>
+export const useOffscreenBuffer = (dimensions: Dimensions) => {
+  const drawingBuffer = useMemo(() => 
     new OffscreenCanvas(
       dimensions.width,
       dimensions.height
-    ).getContext("2d"),
-    [dimensions]);
+    ).getContext("2d")
+  ,[dimensions]);
 
   const transparencyGridBuffer = useMemo(() =>
     new OffscreenCanvas(

@@ -12,26 +12,15 @@ export const Canvas = ({
   const api = useCanvasApi()
   const isDrawing = useRef(false)
 
-  const canvasDimensions = useMemo(() => {
-    // aspect ratio of the user-selected dimensions
-    const canvasAspectRatio = width/height
-
-    // 640 is a placeholder size, I might change it later
-    return {
-      width: 640 * canvasAspectRatio,
-      height: 640,
-      canvasAspectRatio
-    }
-  }, [width, height])
-
   useEffect(() => {
     api.setup(
       canvasRef, 
       hoverOverlayCanvasRef, 
       transparencyGridCanvasRef, 
-      width, 
-      height,
-      canvasDimensions.canvasAspectRatio
+      {width: 1024, height: 1024},
+      {width: 640, height: 640},
+      {x: 20, y: 20},
+      {width: 64, height: 64}
     )
 
     api.controller.drawTransparencyGrid()
@@ -44,25 +33,23 @@ export const Canvas = ({
     window.addEventListener("pointerup", handlePointerUp)
 
     return () => window.removeEventListener("pointerup", handlePointerUp)
-    // api.controller.pencilDraw()
-  }, [width, height])
+  }, [])
 
   return (
     <div className="relative w-fit">
       <canvas
         className="w-full h-full -z-10 absolute top-0 left-0 pointer-events-none"
-        width={canvasDimensions.width}
-        height={canvasDimensions.height} 
+        width={1024}
+        height={1024} 
         ref={transparencyGridCanvasRef}
       ></canvas>
       <canvas
-        // className="bg-white"
-        width={canvasDimensions.width}
-        height={canvasDimensions.height} 
+        width={1024}
+        height={1024} 
         ref={canvasRef}
         onPointerDown={(e) => {
-          const x = e.clientX //- e.currentTarget.getBoundingClientRect().left
-          const y = e.clientY //- e.currentTarget.getBoundingClientRect().top
+          const x = e.clientX 
+          const y = e.clientY 
           api.controller.pencilTool(x, y)
           isDrawing.current = true
         }}
@@ -83,8 +70,8 @@ export const Canvas = ({
       </canvas>
       <canvas
         className="w-full h-full absolute top-0 left-0 pointer-events-none"
-        width={canvasDimensions.width}
-        height={canvasDimensions.height} 
+        width={1024}
+        height={1024} 
         ref={hoverOverlayCanvasRef}
       ></canvas>
     </div>

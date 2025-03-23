@@ -1,53 +1,49 @@
-import { useState } from "react"
+import { RefObject, useRef } from "react"
 
 export interface CanvasViewportConfig {
   dimensions: CanvasDimensionsController;
 }
 
-export interface CanvasDimensions {
-  width: number,
-  height: number,
-  scaleX: number,
-  scaleY: number,
-  aspectRatio: number
+export interface CanvasDimensionsController {
+  ref: RefObject<CanvasDimensions>
+  set: <K extends keyof CanvasDimensions>(value: Record<K, CanvasDimensions[K]>) => void
 }
 
-export interface CanvasDimensionsController extends CanvasDimensions {
-  set: (
-    width: number,
-    height: number,
-    canvasWidth: number,
-    canvasHeight: number,
-    aspectRatio: number
-  ) => void;
+export interface CanvasDimensions {
+  viewport: Dimensions;
+  size: Dimensions;
+  position: Position; 
+  resolution: Dimensions;
+}
+
+export interface Dimensions {
+  width: number;
+  height: number;
+}
+
+export interface Position {
+  x: number,
+  y: number
 }
 
 export const useCanvasViewportConfig = () => {
-
-  const [dimensions, setDimensions] = useState<CanvasDimensions>({
-    width: 0,
-    height: 0,
-    scaleX: 1,
-    scaleY: 1,
-    aspectRatio: 1
+  
+  const dimensions = useRef<CanvasDimensions>({
+    viewport: {width: 0, height: 0},
+    size: {width: 0, height: 0},
+    position: {x: 0, y: 0},
+    resolution: {width: 0, height: 0}
   })
-
 
   return {
     dimensions: {
-      ...dimensions,
-      set: (
-        width: number,
-        height: number,
-        canvasWidth: number,
-        canvasHeight: number,
-        aspectRatio: number
-      ) => {
-        const scaleX = canvasWidth / width;
-        const scaleY = canvasHeight / height;
-        setDimensions({ width, height, scaleX, scaleY, aspectRatio })
-      },
-
+      ref: dimensions,
+      set: <K extends keyof CanvasDimensions>(dims: Record<K, CanvasDimensions[K]>) => {
+        (Object.entries(dims) as Array<[K, CanvasDimensions[K]]>)
+        .forEach(([key, val]) => {
+          dimensions.current[key] = val
+        })
+      }
     }
   }
 }

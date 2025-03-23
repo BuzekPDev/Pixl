@@ -1,6 +1,6 @@
-import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useMemo, useRef } from "react";
+import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { CanvasToolsConfig, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
-import { CanvasViewportConfig, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
+import { CanvasViewportConfig, Dimensions, Position, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
 import { getHoverCoordinates } from "../graphicsUtils.ts/getHoverCoordinates";
 import { CanvasDrawStack } from "../classes/CanvasDrawStack";
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor";
@@ -11,9 +11,10 @@ export interface CanvasContext {
     canvasRef: RefObject<HTMLCanvasElement | null>,
     hoverOverlayCanvasRef: RefObject<HTMLCanvasElement | null>,
     transparencyGridCanvasRef: RefObject<HTMLCanvasElement | null>,
-    width: number,
-    height: number,
-    aspectRatio: number,
+    viewport: Dimensions,
+    size: Dimensions,
+    position: Position,
+    resolution: Dimensions
   ) => void,
   controller: CanvasController;
   canvasDrawStack: CanvasDrawStack;
@@ -33,6 +34,8 @@ export interface CanvasController {
 
 const canvasContext = createContext<CanvasContext | null>(null)
 
+export const zoom = 2
+
 export const CanvasProvider = ({
   children
 }: PropsWithChildren<any>) => {
@@ -47,43 +50,78 @@ export const CanvasProvider = ({
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
-  const offscreenBuffer = useOffscreenBuffer(canvasViewportConfig.dimensions)
+  const offscreenBuffer = useOffscreenBuffer(canvasViewportConfig.dimensions.ref.current.resolution)
 
+  const mouseCoordinates = useRef({
+    prevClientX: 0,
+    prevClientY: 0
+  })
+  
   useEffect(() => {
-    if (!canvasRenderingContext.current) {
-      throw new Error("Set up the canvas first")
-    }
-    
-    // preserve canvas contents on resize
-    if (offscreenBuffer.drawingBuffer) {
-      const buffer = offscreenBuffer.drawingBuffer
-      const ctx = canvasRenderingContext.current
-      
-      const { scaleX, scaleY } = canvasViewportConfig.dimensions
-      
-      const bufferWidth = buffer.canvas.width
-      const bufferHeight = buffer.canvas.height
+    // set buffer size/resolution on initial load
+    resizeBuffers()
+  }, [])
 
-      const scaledBufferX = bufferWidth * scaleX
-      const scaledBufferY = bufferHeight * scaleY
-      
-      // canvas width or height being 0 causes an InvalidStateError
-      if (bufferWidth && bufferHeight) {
-        ctx.drawImage(buffer.canvas, 0, 0, scaledBufferX, scaledBufferY)
-      }
+  const resizeBuffers = () => {
+    if (!offscreenBuffer.drawingBuffer) {
+      throw new Error("Drawing buffer not ready")
     }
- 
-  }, [canvasViewportConfig.dimensions])
+
+    if (!offscreenBuffer.hoverOverlayBuffer) {
+      throw new Error("Hover overlay buffer not ready")
+    }
+
+    if (!offscreenBuffer.transparencyGridBuffer) {
+      throw new Error("Transparency grid buffer not ready")
+    }
+
+    const { 
+      drawingBuffer, 
+      hoverOverlayBuffer, 
+      transparencyGridBuffer 
+    } = offscreenBuffer
+
+    const {
+      width: newBufferWidth,
+      height: newBufferHeight
+    } = canvasViewportConfig.dimensions.ref.current.resolution
+
+    let imageData: ImageData | null = null;
+    const {width: bufferWidth, height: bufferHeight} = drawingBuffer.canvas
+   
+    if (bufferWidth && bufferHeight) {
+      imageData = drawingBuffer.getImageData(0, 0, bufferWidth, bufferHeight)
+    }
+
+    drawingBuffer.canvas.width = newBufferWidth
+    hoverOverlayBuffer.canvas.width = newBufferWidth
+    transparencyGridBuffer.canvas.width = newBufferWidth
+
+    drawingBuffer.canvas.height = newBufferHeight
+    hoverOverlayBuffer.canvas.height = newBufferHeight
+    transparencyGridBuffer.canvas.height = newBufferHeight
+
+    if (imageData) {
+      drawingBuffer.putImageData(imageData, 0, 0)
+    }
+
+  }
 
   const drawTransparencyGrid = () => {
     if (!transparencyGridCanvaRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
 
-    const ctx = transparencyGridCanvaRenderingContext.current
-    const canvas = ctx.canvas as HTMLCanvasElement
+    const {
+      width: drawingAreaWidth, 
+      height: drawingAreaHeight
+    } = canvasViewportConfig.dimensions.ref.current.size
 
-    const { width, height } = canvas.getBoundingClientRect();
+    const { x, y } = 
+      canvasViewportConfig.dimensions.ref.current.position
+
+    const ctx = transparencyGridCanvaRenderingContext.current
+
     const gridSize = 8
 
     const patternCanvas: HTMLCanvasElement = document.createElement('canvas');
@@ -102,7 +140,12 @@ export const CanvasProvider = ({
 
     const pattern = ctx.createPattern(patternCanvas, 'repeat')
     ctx.fillStyle = pattern as CanvasPattern;
-    ctx.fillRect(0, 0, width, height);
+    ctx.fillRect(
+      Math.floor(x/zoom), 
+      Math.floor(y/zoom), 
+      Math.floor(drawingAreaWidth*zoom), 
+      Math.floor(drawingAreaHeight*zoom)
+    );
   }
 
   // optimize & add Bresenham's Line Algorithm/interpolation
@@ -117,17 +160,27 @@ export const CanvasProvider = ({
 
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
-    const { scaleX, scaleY } = canvasViewportConfig.dimensions
 
-    const bufferWidth = buffer.canvas.width
-    const bufferHeight = buffer.canvas.height
+    // const { left } = ctx.canvas.getBoundingClientRect()
+
+    const { position, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { x: drawingAreaX, y: drawingAreaY } = position
+    const { width: bufferWidth, height: bufferHeight } = resolution
+
+    const scaleX = drawingAreaWidth/bufferWidth
+    const scaleY = drawingAreaHeight/bufferHeight
 
     const {
       x,
       y,
       toolSizeX,
       toolSizeY
-    } = getHoverCoordinates(clientX, clientY, canvasViewportConfig.dimensions, ctx, pencil.width)
+    } = getHoverCoordinates(clientX, clientY, position, ctx, pencil.width)
+
+    if (x === null || y === null) {
+      return
+    }
 
     const imageData = buffer.getImageData(x, y, toolSizeX, toolSizeY)
 
@@ -141,7 +194,12 @@ export const CanvasProvider = ({
     const scaledBufferX = bufferWidth * scaleX
     const scaledBufferY = bufferHeight * scaleY
 
-    ctx.drawImage(buffer.canvas, 0, 0, scaledBufferX, scaledBufferY)
+    ctx.drawImage(buffer.canvas, 
+      drawingAreaX / zoom, 
+      drawingAreaY / zoom, 
+      scaledBufferX * zoom, 
+      scaledBufferY * zoom
+    )
 
     for (let i = 0; i < surfaceArea; i++) {
       const index = 4 * i
@@ -172,15 +230,19 @@ export const CanvasProvider = ({
       throw new Error("Hover overlay buffer not ready")
     }
 
-    const ctx = hoverOverlayCanvasRenderingContext.current;
-    const buffer = offscreenBuffer.hoverOverlayBuffer;
-    const { scaleX, scaleY } = canvasViewportConfig.dimensions
+    const ctx = hoverOverlayCanvasRenderingContext.current
+    const buffer = offscreenBuffer.hoverOverlayBuffer
 
-    const { width, height } = ctx.canvas.getBoundingClientRect()
-    const bufferWidth = buffer.canvas.width
-    const bufferHeight = buffer.canvas.height
+    const { viewport, position, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { width: viewportWidth, height: viewportHeight } = viewport
+    const { x: drawingAreaX, y: drawingAreaY } = position
+    const { width: bufferWidth, height: bufferHeight } = resolution
 
-    ctx.clearRect(0, 0, width, height)
+    const scaleX = drawingAreaWidth/bufferWidth
+    const scaleY = drawingAreaHeight/bufferHeight
+
+    ctx.clearRect(0, 0, viewportWidth, viewportHeight)
     buffer.clearRect(0, 0, bufferWidth, bufferHeight)
 
     const scaledBufferX = bufferWidth * scaleX
@@ -191,13 +253,16 @@ export const CanvasProvider = ({
       y,
       toolSizeX,
       toolSizeY
-    } = getHoverCoordinates(clientX, clientY, canvasViewportConfig.dimensions, ctx, pencil.width)
+    } = getHoverCoordinates(clientX, clientY, position, ctx, pencil.width)
 
+    if (x === null || y === null) {
+      return
+    }
     ctx.globalAlpha = 0.2
     ctx.fillStyle = "#000"
     buffer.fillRect(x, y, toolSizeX, toolSizeY)
 
-    ctx.drawImage(buffer.canvas, 0, 0, scaledBufferX, scaledBufferY)
+    ctx.drawImage(buffer.canvas, drawingAreaX / zoom, drawingAreaY / zoom, scaledBufferX * zoom, scaledBufferY * zoom)
   }
 
   const clearHoverMask = () => {
@@ -221,11 +286,13 @@ export const CanvasProvider = ({
 
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
-    const { dimensions } = canvasViewportConfig
-    const { scaleX, scaleY, width, height } = dimensions
+    const { position, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { x: drawingAreaX, y: drawingAreaY } = position
+    const { width: bufferWidth, height: bufferHeight } = resolution
 
-    const bufferWidth = width
-    const bufferHeight = height
+    const scaleX = drawingAreaWidth/bufferWidth
+    const scaleY = drawingAreaHeight/bufferHeight
 
     const scaledBufferX = bufferWidth * scaleX
     const scaledBufferY = bufferHeight * scaleY
@@ -259,8 +326,8 @@ export const CanvasProvider = ({
     const modifiedImage = new ImageData(modifiedImageData, bufferWidth, bufferHeight)
     buffer.putImageData(modifiedImage, 0, 0)
 
-    ctx.clearRect(0, 0, scaledBufferX, scaledBufferY)
-    ctx.drawImage(buffer.canvas, 0, 0, scaledBufferX, scaledBufferY)
+    ctx.clearRect(drawingAreaX/zoom, drawingAreaY/zoom, scaledBufferX*zoom, scaledBufferY*zoom)
+    ctx.drawImage(buffer.canvas, drawingAreaX/zoom, drawingAreaY/zoom, scaledBufferX*zoom, scaledBufferY*zoom)
   }
 
   const redo = () => {
@@ -274,15 +341,16 @@ export const CanvasProvider = ({
 
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
-    const { dimensions } = canvasViewportConfig
-    const { scaleX, scaleY, width, height } = dimensions
+    const { position, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { x: drawingAreaX, y: drawingAreaY } = position
+    const { width: bufferWidth, height: bufferHeight } = resolution
 
-    const bufferWidth = width
-    const bufferHeight = height
+    const scaleX = drawingAreaWidth/bufferWidth
+    const scaleY = drawingAreaHeight/bufferHeight
 
     const scaledBufferX = bufferWidth * scaleX
     const scaledBufferY = bufferHeight * scaleY
-
 
     const nextFrame = canvasDrawStack.redo();
     if (!nextFrame) return
@@ -313,11 +381,10 @@ export const CanvasProvider = ({
     const modifiedImage = new ImageData(modifiedImageData, bufferWidth, bufferHeight)
     buffer.putImageData(modifiedImage, 0, 0)
 
-    ctx.clearRect(0, 0, scaledBufferX, scaledBufferY)
-    ctx.drawImage(buffer.canvas, 0, 0, scaledBufferX, scaledBufferY)
+    ctx.clearRect(drawingAreaX / zoom, drawingAreaY / zoom, scaledBufferX * zoom , scaledBufferY * zoom)
+    ctx.drawImage(buffer.canvas, drawingAreaX / zoom, drawingAreaY / zoom, scaledBufferX * zoom, scaledBufferY * zoom)
   }
 
-  useEffect(() => drawTransparencyGrid())
   return (
     <canvasContext.Provider
       value={{
@@ -325,23 +392,18 @@ export const CanvasProvider = ({
           canvasRef, 
           hoverOverlayCanvasRef, 
           transparencyGridCanvasRef, 
-          width, 
-          height, 
-          aspectRatio
+          viewport: Dimensions,
+          size: Dimensions,
+          position: Position,
+          resolution: Dimensions,
         ) => {
           if (canvasRef.current) {
-            const {
-              width: canvasWidth, 
-              height: canvasHeight
-            } = canvasRef.current.getBoundingClientRect()
-
-            canvasViewportConfig.dimensions.set(
-              width, 
-              height, 
-              canvasWidth, 
-              canvasHeight, 
-              aspectRatio
-            )
+            canvasViewportConfig.dimensions.set({
+              viewport,
+              size,
+              resolution,
+              position
+            })
             
             const ctx = canvasRef.current.getContext("2d") as CanvasRenderingContext2D
             canvasRenderingContext.current = ctx

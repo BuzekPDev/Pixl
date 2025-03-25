@@ -36,10 +36,10 @@ export const getHoverCoordinates = (
 
   const relativeClientY = Math.floor(((localY) / 4) / zoom)
   const y = Math.floor((relativeClientY)-Math.floor(toolSize/2))
-
+  
   return {
-    x: Math.floor(x),
-    y: Math.floor(y),
+    x: x,
+    y: y,
     toolSizeX: toolSize,
     toolSizeY: toolSize
   }

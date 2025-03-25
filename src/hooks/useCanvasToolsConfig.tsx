@@ -47,7 +47,7 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       width: 1
     })
 
-  const [eraserOptions, setEraserOptions] =
+  const [eraserToolOptions, setEraserOptions] =
     useState<ToolState>({
       width: 1
     })
@@ -71,7 +71,7 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       setWidth: (width: number) => setPencilToolOptions(p => ({...p, width: width}))
     },
     eraser: {
-      ...eraserOptions,
+      ...eraserToolOptions,
       setWidth: (width: number) => setEraserOptions(p => ({...p, width: width}))
     }
   }

@@ -14,8 +14,9 @@ export const SizeObserver = ({ children }: PropsWithChildren) => {
     const { width, height } = measureRef.current.getBoundingClientRect()
     setDimesions({ width, height })
 
-    const resizeHandler = (e: any) => {
-      const [width, height] = [e.target.innerWidth, e.target.innerHeight] 
+    const resizeHandler = () => {
+      if (!measureRef.current) return
+      const {width, height} = measureRef.current.getBoundingClientRect()
       setDimesions({
         width,height
       })
@@ -26,15 +27,20 @@ export const SizeObserver = ({ children }: PropsWithChildren) => {
     return () => window.removeEventListener("resize", resizeHandler)
   }, [])
 
-  if (dimensions === null) {
-    return (
-      <div className="w-full h-full" ref={measureRef}></div>
-    )
-  }
 
   return (
-    <>
-      {Children.map(children, (child) => {
+    <div
+      className="w-full h-full"
+      onResizeCapture={(e) => {
+        const { width, height } = e.currentTarget.getBoundingClientRect()
+        setDimesions({
+          width,height
+        })
+      }}
+      ref={measureRef}
+    >
+      {dimensions ?
+        Children.map(children, (child) => {
         if (isValidElement<CanvasProps>(child)) {
           return cloneElement(child, {
             width: dimensions.width,
@@ -42,7 +48,9 @@ export const SizeObserver = ({ children }: PropsWithChildren) => {
           });
         }
         return child;
-      })}
-    </>
+      })
+      : null
+      }
+    </div>
   )
 }

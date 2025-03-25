@@ -1,5 +1,5 @@
-import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { CanvasToolsConfig, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
+import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { CanvasToolsConfig, SelectedTool, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
 import { CanvasDimensions, CanvasViewportConfig, Dimensions, Position, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
 import { getHoverCoordinates } from "../graphicsUtils.ts/getHoverCoordinates";
 import { CanvasDrawStack } from "../classes/CanvasDrawStack";
@@ -16,8 +16,8 @@ export interface CanvasContext {
     position: Position,
     resolution: Dimensions
   ) => void,
-  changeDimensions: 
-    <K extends keyof CanvasDimensions>
+  changeDimensions:
+  <K extends keyof CanvasDimensions>
     (dims: Record<K, CanvasDimensions[K]>) => void;
   controller: CanvasController;
   resetMousePosition: () => void
@@ -29,13 +29,15 @@ export interface CanvasContext {
 
 export interface CanvasController {
   drawTransparencyGrid: () => void;
-  pencilTool: (clientX: number, clientY: number) => void;
+  pencil: (clientX: number, clientY: number) => void;
+  eraser: (clientX: number, clientY: number) => void;
   hoverMask: (clientX: number, clientY: number) => void;
   clearHoverMask: () => void;
   undo: () => void;
   redo: () => void;
   move: (clientX: number, clientY: number) => void;
-  zoom: (deltaY: number) => void 
+  zoom: (deltaY: number) => void
+  selected: SelectedTool
 }
 
 const canvasContext = createContext<CanvasContext | null>(null)
@@ -46,17 +48,24 @@ export const CanvasProvider = ({
   children
 }: PropsWithChildren<any>) => {
 
+  const [isReady, setIsReady] = useState(false)
+
   const canvasToolsConfig = useCanvasToolsConfig()
   const canvasViewportConfig = useCanvasViewportConfig()
   const canvasDrawStack = useMemo(() => new CanvasDrawStack(), [])
   const colorProcessor = useMemo(() => new ColorProcessor(), [])
 
-  const { pencil, eraser, colors } = canvasToolsConfig
+  const { selectedTool, colors } = canvasToolsConfig
 
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const offscreenBuffer = useOffscreenBuffer()
+
+  const canvasUpdate = useRef({
+    willDraw: false,
+    willClear: false
+  })
 
   const mouseCoordinates = useRef<{
     prevClientX: number,
@@ -70,11 +79,12 @@ export const CanvasProvider = ({
     scrolled: false,
     dir: null
   })
-  
+
   useEffect(() => {
+    if (!isReady) return
     // set buffer size/resolution on initial load
     resizeBuffers()
-  }, [])
+  }, [isReady])
 
   const resizeBuffers = () => {
     if (!offscreenBuffer.drawingBuffer) {
@@ -89,10 +99,10 @@ export const CanvasProvider = ({
       throw new Error("Transparency grid buffer not ready")
     }
 
-    const { 
-      drawingBuffer, 
-      hoverOverlayBuffer, 
-      transparencyGridBuffer 
+    const {
+      drawingBuffer,
+      hoverOverlayBuffer,
+      transparencyGridBuffer
     } = offscreenBuffer
 
     const {
@@ -101,8 +111,8 @@ export const CanvasProvider = ({
     } = canvasViewportConfig.dimensions.ref.current.resolution
 
     let imageData: ImageData | null = null;
-    const {width: bufferWidth, height: bufferHeight} = drawingBuffer.canvas
-   
+    const { width: bufferWidth, height: bufferHeight } = drawingBuffer.canvas
+
     if (bufferWidth && bufferHeight) {
       imageData = drawingBuffer.getImageData(0, 0, bufferWidth, bufferHeight)
     }
@@ -116,11 +126,11 @@ export const CanvasProvider = ({
     transparencyGridBuffer.canvas.height = newBufferHeight
 
     if (imageData) {
-      drawingBuffer.clearRect(0,0,newBufferWidth, newBufferHeight)
+      drawingBuffer.clearRect(0, 0, newBufferWidth, newBufferHeight)
       drawingBuffer.putImageData(imageData, 0, 0)
     }
-    drawTransparencyGrid()
 
+    drawTransparencyGrid()
   }
 
   const drawCanvas = () => {
@@ -136,15 +146,17 @@ export const CanvasProvider = ({
 
     const { position, size, zoom } = canvasViewportConfig.dimensions.ref.current
 
-    const { x: drawingAreaX, y: drawingAreaY } = position
-    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { x, y } = position
+    const { width: drawingAreaWidth, height: drawingAreaHeight } = size
 
-    ctx.drawImage(buffer.canvas, 
-      drawingAreaX / zoom, 
-      drawingAreaY / zoom, 
-      drawingAreaWidth * zoom, 
-      drawingAreaHeight * zoom
+    ctx.drawImage(buffer.canvas,
+      Math.floor(x / zoom),
+      Math.floor(y / zoom),
+      Math.floor(drawingAreaWidth * zoom),
+      Math.floor(drawingAreaHeight * zoom)
     )
+
+    canvasUpdate.current.willDraw = false
   }
 
   const clearCanvas = () => {
@@ -156,15 +168,17 @@ export const CanvasProvider = ({
 
     const { position, size, zoom } = canvasViewportConfig.dimensions.ref.current
 
-    const { x: drawingAreaX, y: drawingAreaY } = position
-    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { x, y } = position
+    const { width: drawingAreaWidth, height: drawingAreaHeight } = size
 
     ctx.clearRect(
-      drawingAreaX / zoom, 
-      drawingAreaY / zoom, 
-      drawingAreaWidth * zoom, 
-      drawingAreaHeight * zoom
+      (x / zoom) - 1,
+      (y / zoom) - 1,
+      (drawingAreaWidth * zoom) + 1, 
+      (drawingAreaHeight * zoom) + 1
     )
+
+    canvasUpdate.current.willClear = false
   }
 
   const drawTransparencyGrid = () => {
@@ -175,7 +189,7 @@ export const CanvasProvider = ({
     const { zoom, size, position } = canvasViewportConfig.dimensions.ref.current
 
     const {
-      width: drawingAreaWidth, 
+      width: drawingAreaWidth,
       height: drawingAreaHeight
     } = size
 
@@ -183,8 +197,8 @@ export const CanvasProvider = ({
 
     const ctx = transparencyGridCanvaRenderingContext.current
 
-    const {width, height} = ctx.canvas
-    ctx.clearRect(0,0,width,height)
+    const { width, height } = ctx.canvas
+    ctx.clearRect(0, 0, width, height)
     const gridSize = 8
 
     const patternCanvas: HTMLCanvasElement = document.createElement('canvas');
@@ -204,15 +218,15 @@ export const CanvasProvider = ({
     const pattern = ctx.createPattern(patternCanvas, 'repeat')
     ctx.fillStyle = pattern as CanvasPattern;
     ctx.fillRect(
-      Math.floor(x/zoom), 
-      Math.floor(y/zoom), 
-      Math.floor(drawingAreaWidth*zoom), 
-      Math.floor(drawingAreaHeight*zoom)
+      Math.floor(x / zoom),
+      Math.floor(y / zoom),
+      Math.floor(drawingAreaWidth * zoom),
+      Math.floor(drawingAreaHeight * zoom)
     );
   }
 
   // optimize & add Bresenham's Line Algorithm/interpolation
-  const pencilTool = (clientX: number, clientY: number) => {
+  const pencil = (clientX: number, clientY: number) => {
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
@@ -220,17 +234,24 @@ export const CanvasProvider = ({
       throw new Error("Drawing buffer buffer not ready")
     }
 
+    const [r, g, b, a] = colors.palette[colors.current]
+
+    if (r === 0 && g === 0 && b === 0 && a === 0) {
+      return eraser(clientX, clientY)
+    }
+
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
 
-    const { position, zoom, size } = canvasViewportConfig.dimensions.ref.current
+    const { position, zoom, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const toolSize = canvasToolsConfig[selectedTool.key].width
 
     const {
       x,
       y,
       toolSizeX,
       toolSizeY
-    } = getHoverCoordinates(clientX, clientY, position, size, zoom, ctx, pencil.width)
+    } = getHoverCoordinates(clientX, clientY, position, size, zoom, ctx, toolSize)
 
     if (x === null || y === null) {
       return
@@ -238,16 +259,22 @@ export const CanvasProvider = ({
 
     const imageData = buffer.getImageData(x, y, toolSizeX, toolSizeY)
 
-    const [r, g, b, a] = colors.palette[colors.current]
-
-    buffer.fillStyle = `rgb(${r},${g},${b},${a})`
+    buffer.fillStyle = `rgb(${r},${g},${b})`
     buffer.fillRect(x, y, toolSizeX, toolSizeY)
 
     const surfaceArea = toolSizeX * toolSizeY
 
-    requestAnimationFrame(drawCanvas)
+    requestAnimationFrame(() => {
+      clearCanvas()
+      drawCanvas()
+    })
 
     for (let i = 0; i < surfaceArea; i++) {
+      const pixelX = x + (i % toolSizeX)
+      const pixelY = y + Math.floor(i / toolSizeY)
+      if (pixelX > resolution.width-1 || pixelY > resolution.height-1) {
+        continue
+      }
       const index = 4 * i
       const previousColorData: RGBA = [
         imageData.data[index],
@@ -258,11 +285,69 @@ export const CanvasProvider = ({
 
       const newColorData: RGBA = [r, g, b, a]
       const difference = colorProcessor.getRGBDifference(previousColorData, newColorData)
+      
+      canvasDrawStack.push({
+        x: pixelX,
+        y: pixelY,
+        rgb: difference,
+      })
+    }
+  }
+
+  const eraser = (clientX: number, clientY: number) => {
+    if (!canvasRenderingContext.current) {
+      throw new Error("Set up the canvas first")
+    }
+    if (!offscreenBuffer.drawingBuffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
+
+    const ctx = canvasRenderingContext.current
+    const buffer = offscreenBuffer.drawingBuffer
+
+    const { position, zoom, size, resolution } = canvasViewportConfig.dimensions.ref.current
+    const toolSize = canvasToolsConfig[selectedTool.key].width
+
+    const {
+      x,
+      y,
+      toolSizeX,
+      toolSizeY
+    } = getHoverCoordinates(clientX, clientY, position, size, zoom, ctx, toolSize)
+
+    if (x === null || y === null) {
+      return
+    }
+
+    const imageData = buffer.getImageData(x, y, toolSizeX, toolSizeY)
+
+    buffer.clearRect(x, y, toolSizeX, toolSizeY)
+
+    const surfaceArea = toolSizeX * toolSizeY
+
+    requestAnimationFrame(() => {
+      clearCanvas()
+      drawCanvas()
+    })
+
+    for (let i = 0; i < surfaceArea; i++) {
+      const pixelX = x + (i % toolSizeX)
+      const pixelY = y + Math.floor(i / toolSizeY)
+      if (pixelX > resolution.width-1 || pixelY > resolution.height-1) {
+        continue
+      }
+      const index = 4 * i
+      const previousColorData: RGBA = [
+        imageData.data[index],
+        imageData.data[index + 1],
+        imageData.data[index + 2],
+        imageData.data[index + 3]
+      ]
 
       canvasDrawStack.push({
-        x: x + (i % toolSizeX),
-        y: y + Math.floor(i / toolSizeY),
-        rgb: difference,
+        x: pixelX,
+        y: pixelY,
+        rgb: previousColorData,
       })
     }
   }
@@ -280,7 +365,7 @@ export const CanvasProvider = ({
     const buffer = offscreenBuffer.hoverOverlayBuffer
 
     const { viewport, position, size, resolution, zoom } = canvasViewportConfig.dimensions.ref.current
-    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { width: drawingAreaWidth, height: drawingAreaHeight } = size
     const { width: viewportWidth, height: viewportHeight } = viewport
     const { x: drawingAreaX, y: drawingAreaY } = position
     const { width: bufferWidth, height: bufferHeight } = resolution
@@ -288,18 +373,20 @@ export const CanvasProvider = ({
     ctx.clearRect(0, 0, viewportWidth, viewportHeight)
     buffer.clearRect(0, 0, bufferWidth, bufferHeight)
 
+    const toolSize = canvasToolsConfig[selectedTool.key].width
+
     const {
       x,
       y,
       toolSizeX,
       toolSizeY
-    } = getHoverCoordinates(clientX, clientY, position, size, zoom, ctx, pencil.width)
+    } = getHoverCoordinates(clientX, clientY, position, size, zoom, ctx, toolSize)
 
     if (x === null || y === null) {
       return
     }
-    ctx.globalAlpha = 0.2
-    ctx.fillStyle = "#000"
+    // ctx.globalAlpha = 0.2
+    buffer.fillStyle = "rgba(0, 0, 0, 0.3)"
     buffer.fillRect(x, y, toolSizeX, toolSizeY)
 
     ctx.drawImage(buffer.canvas, drawingAreaX / zoom, drawingAreaY / zoom, drawingAreaWidth * zoom, drawingAreaHeight * zoom)
@@ -324,11 +411,12 @@ export const CanvasProvider = ({
       throw new Error("Drawing buffer buffer not ready")
     }
 
-    const ctx = canvasRenderingContext.current
+    if (canvasUpdate.current.willClear || canvasUpdate.current.willDraw) {
+      return
+    }
+
     const buffer = offscreenBuffer.drawingBuffer
-    const { position, size, resolution, zoom } = canvasViewportConfig.dimensions.ref.current
-    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
-    const { x: drawingAreaX, y: drawingAreaY } = position
+    const { resolution } = canvasViewportConfig.dimensions.ref.current
     const { width: bufferWidth, height: bufferHeight } = resolution
 
     const previousFrame = canvasDrawStack.undo();
@@ -349,9 +437,7 @@ export const CanvasProvider = ({
         modifiedImageData[bufferIndex + 2],
         modifiedImageData[bufferIndex + 3]
       ]
-
       const [r, g, b, a] = colorProcessor.revertRGBADifference(currentColor, rgb)
-
       modifiedImageData[bufferIndex] = r
       modifiedImageData[bufferIndex + 1] = g
       modifiedImageData[bufferIndex + 2] = b
@@ -361,8 +447,13 @@ export const CanvasProvider = ({
     const modifiedImage = new ImageData(modifiedImageData, bufferWidth, bufferHeight)
     buffer.putImageData(modifiedImage, 0, 0)
 
-    ctx.clearRect(drawingAreaX/zoom, drawingAreaY/zoom, drawingAreaWidth*zoom, drawingAreaHeight*zoom)
-    ctx.drawImage(buffer.canvas, drawingAreaX/zoom, drawingAreaY/zoom, drawingAreaWidth*zoom, drawingAreaHeight*zoom)
+    canvasUpdate.current.willClear = true
+    canvasUpdate.current.willDraw = true
+
+    requestAnimationFrame(() => {
+      clearCanvas()
+      drawCanvas()
+    })
   }
 
   const redo = () => {
@@ -377,7 +468,7 @@ export const CanvasProvider = ({
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
     const { position, size, resolution, zoom } = canvasViewportConfig.dimensions.ref.current
-    const { width: drawingAreaWidth, height: drawingAreaHeight} = size
+    const { width: drawingAreaWidth, height: drawingAreaHeight } = size
     const { x: drawingAreaX, y: drawingAreaY } = position
     const { width: bufferWidth, height: bufferHeight } = resolution
 
@@ -410,24 +501,43 @@ export const CanvasProvider = ({
     const modifiedImage = new ImageData(modifiedImageData, bufferWidth, bufferHeight)
     buffer.putImageData(modifiedImage, 0, 0)
 
-    ctx.clearRect(drawingAreaX / zoom, drawingAreaY / zoom, drawingAreaWidth * zoom , drawingAreaHeight * zoom)
+    ctx.clearRect(drawingAreaX / zoom, drawingAreaY / zoom, drawingAreaWidth * zoom, drawingAreaHeight * zoom)
     ctx.drawImage(buffer.canvas, drawingAreaX / zoom, drawingAreaY / zoom, drawingAreaWidth * zoom, drawingAreaHeight * zoom)
   }
 
   const zoom = (deltaY: number) => {
 
+    if (canvasUpdate.current.willClear || canvasUpdate.current.willDraw) return
+
     if (scroll.current.scrolled) {
       return
     }
 
-    const zoomDir = Math.sign(deltaY) * 0.05
-    const { zoom } = canvasViewportConfig.dimensions.ref.current
-    
+    const zoomAmount = Math.sign(deltaY) * 0.05
+    const { zoom, position, size } = canvasViewportConfig.dimensions.ref.current
+
+    if (zoom - zoomAmount < 0.25) return
+
+    scroll.current.scrolled = true
+    canvasUpdate.current.willClear = true
+    canvasUpdate.current.willDraw = true
+
     requestAnimationFrame(() => {
       scroll.current.scrolled = false
+      const nextZoom = zoom - zoomAmount
 
-      canvasViewportConfig.dimensions.set({zoom: zoom - zoomDir})
+      const anchorX = size.width / 2;
+      const anchorY = size.height / 2;
+
+      const scaleFactor = nextZoom / zoom;
+
       clearCanvas()
+      canvasViewportConfig.dimensions.set({ zoom: nextZoom, 
+        position: {
+        x: Math.floor(anchorX + (position.x - anchorX) * scaleFactor),
+        y: Math.floor(anchorY + (position.y - anchorY) * scaleFactor)
+      } 
+    })
       drawCanvas()
       drawTransparencyGrid()
     })
@@ -444,15 +554,12 @@ export const CanvasProvider = ({
       throw new Error("Drawing buffer buffer not ready")
     }
 
-  
+    if (canvasUpdate.current.willClear || canvasUpdate.current.willDraw) return
+
     // ctx drawing canvas context
     const ctxDCC = canvasRenderingContext.current
-    // ctx transparency grid context
-    const ctxTGC = transparencyGridCanvaRenderingContext.current
 
-    const { drawingBuffer } = offscreenBuffer
-
-    const { position, size, zoom } = canvasViewportConfig.dimensions.ref.current
+    const { position, zoom } = canvasViewportConfig.dimensions.ref.current
     const { left, top } = ctxDCC.canvas.getBoundingClientRect()
 
     if (!mouseCoordinates.current) {
@@ -462,7 +569,7 @@ export const CanvasProvider = ({
       }
       return
     }
-    const {prevClientX, prevClientY} = mouseCoordinates.current
+    const { prevClientX, prevClientY } = mouseCoordinates.current
 
     const xDiff = (clientX - left) - prevClientX
     const yDiff = (clientY - top) - prevClientY
@@ -475,19 +582,19 @@ export const CanvasProvider = ({
       prevClientY: clientY - top
     }
 
+    canvasUpdate.current.willClear = true
+    canvasUpdate.current.willDraw = true
+
     requestAnimationFrame(() => {
-      ctxDCC.clearRect(position.x / zoom,(position.y / zoom), size.width * zoom, size.height * zoom)
-      ctxTGC.clearRect(position.x / zoom,(position.y / zoom), size.width * zoom, size.height * zoom)
-
-      ctxDCC.drawImage(drawingBuffer.canvas, newX / zoom, newY / zoom, size.width * zoom, size.height * zoom)
+      clearCanvas()
+      canvasViewportConfig.dimensions.set({
+        position: {
+          x: newX,
+          y: newY
+        },
+      })
+      drawCanvas()
       drawTransparencyGrid()
-    })
-
-    canvasViewportConfig.dimensions.set({
-      position: {
-        x: newX,
-        y: newY
-      },
     })
   }
 
@@ -505,9 +612,9 @@ export const CanvasProvider = ({
     <canvasContext.Provider
       value={{
         setup: (
-          canvasRef, 
-          hoverOverlayCanvasRef, 
-          transparencyGridCanvasRef, 
+          canvasRef,
+          hoverOverlayCanvasRef,
+          transparencyGridCanvasRef,
           viewport: Dimensions,
           size: Dimensions,
           position: Position,
@@ -520,7 +627,7 @@ export const CanvasProvider = ({
               resolution,
               position
             })
-            
+
             const ctx = canvasRef.current.getContext("2d") as CanvasRenderingContext2D
             canvasRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
@@ -536,26 +643,31 @@ export const CanvasProvider = ({
             transparencyGridCanvaRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
           }
+          setIsReady(true)
         },
         controller: {
           drawTransparencyGrid,
-          pencilTool,
+          pencil,
+          eraser,
           hoverMask,
           clearHoverMask,
           undo,
           redo,
           move,
-          zoom
+          zoom,
+          selected: selectedTool
         },
         changeDimensions: (dims) => {
+          clearCanvas()
           canvasViewportConfig.dimensions.set(dims)
 
           if ((dims as CanvasDimensions)?.resolution) {
             resizeBuffers()
+            drawCanvas()
           }
         },
         resetMousePosition: () => {
-          mouseCoordinates.current=null
+          mouseCoordinates.current = null
         },
         canvasDrawStack,
         canvasToolsConfig,

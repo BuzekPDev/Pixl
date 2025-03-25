@@ -2,9 +2,15 @@ import { useState } from "react";
 import { RGBA } from "../classes/ColorProcessor";
 
 export interface CanvasToolsConfig {
+  selectedTool: SelectedTool; // tool key
   colors: ColorOptions;
   pencil: ToolOptions;
   eraser: ToolOptions;
+}
+
+export interface SelectedTool {
+  key: ToolType;
+  set: (key: ToolType) => void
 }
 
 export interface ColorOptions {
@@ -13,6 +19,8 @@ export interface ColorOptions {
   setCurrent: (index: number) => void;
   setPalette: (color: RGBA, index: number) => void
 }
+
+export type ToolType = "pencil" | "eraser"
 
 type ColorState = Omit<ColorOptions, "setCurrent" | "setPalette">
 
@@ -28,11 +36,13 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   const [colorOptions, setColorOptions] =
     useState<ColorState>({
-      palette: [[0, 0 ,0, 255], [255, 255, 255, 255], [0, 0, 0, 0]],
+      palette: [[255, 0 , 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]],
       current: 0
     })
 
-  const [pencilOptions, setPencilOptions] =
+  const [selectedTool, setSelectedTool] = useState<ToolType>("pencil")
+
+  const [pencilToolOptions, setPencilToolOptions] =
     useState<ToolState>({
       width: 1
     })
@@ -43,6 +53,10 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
     })
 
   return {
+    selectedTool: {
+      key: selectedTool,
+      set: (key: ToolType) => setSelectedTool(key)
+    },
     colors: {
       ...colorOptions,
       setCurrent: (index: number) => setColorOptions(c => ({ ...c, current: index })),
@@ -53,8 +67,8 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
         }))
     },
     pencil: {
-      ...pencilOptions,
-      setWidth: (width: number) => setPencilOptions(p => ({...p, width: width}))
+      ...pencilToolOptions,
+      setWidth: (width: number) => setPencilToolOptions(p => ({...p, width: width}))
     },
     eraser: {
       ...eraserOptions,

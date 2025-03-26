@@ -31,6 +31,20 @@ export const ToolPanel = () => {
       >
         {icons.hand}
       </ToolButton>
+      <ToolButton
+        onClick={() => {
+          controller.selected.set("bucket")
+        }}
+      >
+        {icons.bucket}
+      </ToolButton>
+      <ToolButton
+        onClick={() => {
+          controller.selected.set("rect")
+        }}
+      >
+        {icons.bucket}
+      </ToolButton>
     </aside>
   )
 }

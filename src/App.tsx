@@ -57,7 +57,7 @@ function App() {
   // }
 
   return (
-    <div className='flex h-screen relative'>
+    <div className='flex h-screen relative select-none'>
       <Header />
       <ToolPanel />
       <main className='h-full box-border w-full pt-20'>

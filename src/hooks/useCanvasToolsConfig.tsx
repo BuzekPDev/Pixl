@@ -6,6 +6,8 @@ export interface CanvasToolsConfig {
   colors: ColorOptions;
   pencil: ToolOptions;
   eraser: ToolOptions;
+  bucket: ToolOptions;
+  rect: ToolOptions;
   zoom: any;
   move: any;
 }
@@ -22,7 +24,7 @@ export interface ColorOptions {
   setPalette: (color: RGBA, index: number) => void
 }
 
-export type ToolType = "pencil" | "eraser" | "move" | "zoom"
+export type ToolType = "pencil" | "eraser" | "move" | "zoom" | "bucket"
 
 type ColorState = Omit<ColorOptions, "setCurrent" | "setPalette">
 
@@ -49,7 +51,17 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       width: 1
     })
 
-  const [eraserToolOptions, setEraserOptions] =
+  const [eraserToolOptions, setEraserToolOptions] =
+    useState<ToolState>({
+      width: 1
+    })
+
+  const [bucketToolOptions, setBucketToolOptions] =
+    useState<ToolState>({
+      width: 1
+    })
+
+  const [rectToolOptions, setRectToolOptions] =
     useState<ToolState>({
       width: 1
     })
@@ -74,7 +86,15 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
     },
     eraser: {
       ...eraserToolOptions,
-      setWidth: (width: number) => setEraserOptions(p => ({...p, width: width}))
+      setWidth: (width: number) => setEraserToolOptions(p => ({...p, width: width}))
+    },
+    bucket: {
+      ...bucketToolOptions,
+      setWidth: () => {}
+    },
+    rect: {
+      ...rectToolOptions,
+      setWidth: () => {}
     },
     zoom: {},
     move: {}

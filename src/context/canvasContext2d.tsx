@@ -1,10 +1,11 @@
 import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CanvasToolsConfig, SelectedTool, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
 import { CanvasDimensions, CanvasViewportConfig, Dimensions, Position, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
-import { getHoverCoordinates } from "../graphicsUtils.ts/getHoverCoordinates";
+import { getHoverCoordinates } from "../graphicsUtils/getHoverCoordinates";
 import { CanvasDrawStack } from "../classes/CanvasDrawStack";
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor";
 import { useOffscreenBuffer } from "../hooks/useOffscreenBuffer";
+import { getFillSpace } from "../graphicsUtils/getFillSpace";
 
 export interface CanvasContext {
   setup: (
@@ -31,11 +32,13 @@ export interface CanvasController {
   drawTransparencyGrid: () => void;
   pencil: (clientX: number, clientY: number) => void;
   eraser: (clientX: number, clientY: number) => void;
+  move: (clientX: number, clientY: number) => void;
+  bucket: (clientX: number, clientY: number) => void;
+  rect: (clientX: number, clientY: number) => void;
   hoverMask: (clientX: number, clientY: number) => void;
   clearHoverMask: () => void;
   undo: () => void;
   redo: () => void;
-  move: (clientX: number, clientY: number) => void;
   zoom: (deltaY: number) => void
   selected: SelectedTool
 }
@@ -48,7 +51,7 @@ export const CanvasProvider = ({
   children
 }: PropsWithChildren<any>) => {
 
-  const [,setIsReady] = useState(false)
+  const [, setIsReady] = useState(false)
 
   const canvasToolsConfig = useCanvasToolsConfig()
   const canvasViewportConfig = useCanvasViewportConfig()
@@ -123,7 +126,7 @@ export const CanvasProvider = ({
       drawingBuffer.clearRect(0, 0, newBufferWidth, newBufferHeight)
       drawingBuffer.putImageData(imageData, 0, 0)
     }
-    
+
     drawTransparencyGrid()
   }
 
@@ -137,7 +140,7 @@ export const CanvasProvider = ({
 
     const buffer = offscreenBuffer.drawingBuffer
     const ctx = canvasRenderingContext.current
-    const { zoom, position, size } = canvasViewportConfig.dimensions.ref.current
+    const { position, size } = canvasViewportConfig.dimensions.ref.current
 
     const { x, y } = position
     const { width: drawingAreaWidth, height: drawingAreaHeight } = size
@@ -174,12 +177,13 @@ export const CanvasProvider = ({
     canvasUpdate.current.willClear = false
   }
 
+  // make grid lighter
   const drawTransparencyGrid = () => {
     if (!transparencyGridCanvaRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
 
-    const { zoom, size, position } = canvasViewportConfig.dimensions.ref.current
+    const { size, position } = canvasViewportConfig.dimensions.ref.current
 
     const {
       width: drawingAreaWidth,
@@ -345,6 +349,105 @@ export const CanvasProvider = ({
     }
   }
 
+  const bucket = (clientX: number, clientY: number) => {
+    if (!canvasRenderingContext.current) {
+      throw new Error("Set up the canvas first")
+    }
+    if (!offscreenBuffer.drawingBuffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
+    
+    const ctx = canvasRenderingContext.current
+    const buffer = offscreenBuffer.drawingBuffer
+
+    const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
+    const toolSize = canvasToolsConfig[selectedTool.key].width
+
+    const {
+      x,
+      y,
+    } = getHoverCoordinates(clientX, clientY, position, size, scale, ctx, toolSize)
+
+    if (x === null || y === null) {
+      return
+    }
+
+    const fillColor = colors.palette[colors.current]
+
+    getFillSpace(x, y, fillColor, resolution, buffer, canvasDrawStack, colorProcessor)
+    drawCanvas()
+  }
+
+  const rect = (clientX: number, clientY: number) => {
+    if (!canvasRenderingContext.current) {
+      throw new Error("Set up the canvas first")
+    }
+    if (!offscreenBuffer.drawingBuffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
+
+    const [r, g, b, a] = colors.palette[colors.current]
+
+    if (r === 0 && g === 0 && b === 0 && a === 0) {
+      return eraser(clientX, clientY)
+    }
+
+    const ctx = canvasRenderingContext.current
+    const buffer = offscreenBuffer.drawingBuffer
+
+    const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
+    const toolSize = canvasToolsConfig[selectedTool.key].width
+    console.debug("rect")
+    const {
+      x,
+      y,
+      toolSizeX,
+      toolSizeY
+    } = getHoverCoordinates(clientX, clientY, position, size, scale, ctx, toolSize)
+
+    if (x === null || y === null) {
+      return
+    }
+
+    const imageData = buffer.getImageData(x, y, toolSizeX, toolSizeY)
+
+    buffer.strokeStyle = `rgb(${r},${g},${b})`
+    buffer.beginPath()
+    buffer.rect(x, y, toolSizeX*10, toolSizeY*10)
+    buffer.stroke()
+    buffer.closePath()
+    const surfaceArea = toolSizeX * toolSizeY
+
+    requestAnimationFrame(() => {
+      clearCanvas()
+      drawCanvas()
+    })
+
+    // for (let i = 0; i < surfaceArea; i++) {
+    //   const pixelX = x + (i % toolSizeX)
+    //   const pixelY = y + Math.floor(i / toolSizeY)
+    //   if (pixelX > resolution.width - 1 || pixelY > resolution.height - 1) {
+    //     continue
+    //   }
+    //   const index = 4 * i
+    //   const previousColorData: RGBA = [
+    //     imageData.data[index],
+    //     imageData.data[index + 1],
+    //     imageData.data[index + 2],
+    //     imageData.data[index + 3]
+    //   ]
+
+    //   const newColorData: RGBA = [r, g, b, a]
+    //   const difference = colorProcessor.getRGBDifference(previousColorData, newColorData)
+
+    //   canvasDrawStack.push({
+    //     x: pixelX,
+    //     y: pixelY,
+    //     rgb: difference,
+    //   })
+    // }
+  }
+
   const hoverMask = (clientX: number, clientY: number) => {
     if (!hoverOverlayCanvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
@@ -378,15 +481,15 @@ export const CanvasProvider = ({
     if (x === null || y === null) {
       return
     }
-    // ctx.globalAlpha = 0.2
+
     buffer.fillStyle = "rgba(0, 0, 0, 0.3)"
     buffer.fillRect(x, y, toolSizeX, toolSizeY)
 
     ctx.drawImage(
-      buffer.canvas, 
-      drawingAreaX, 
-      drawingAreaY, 
-      drawingAreaWidth, 
+      buffer.canvas,
+      drawingAreaX,
+      drawingAreaY,
+      drawingAreaWidth,
       drawingAreaHeight
     )
   }
@@ -533,7 +636,7 @@ export const CanvasProvider = ({
       const anchorX = Math.round(viewport.width / 2);
       const anchorY = Math.round(viewport.height / 2);
 
-      const scaleFactor = Math.round((1 - zoomAmount)*100)/100
+      const scaleFactor = Math.round((1 - zoomAmount) * 100) / 100
 
       if (scale * scaleFactor <= 1) {
         canvasUpdate.current.willClear = false
@@ -547,7 +650,7 @@ export const CanvasProvider = ({
           x: anchorX + (position.x - anchorX) * scaleFactor,
           y: anchorY + (position.y - anchorY) * scaleFactor
         },
-        scale: Math.round((scale * scaleFactor) * 1000) /1000
+        scale: Math.round((scale * scaleFactor) * 1000) / 1000
       })
       drawCanvas()
       drawTransparencyGrid()
@@ -662,6 +765,8 @@ export const CanvasProvider = ({
           drawTransparencyGrid,
           pencil,
           eraser,
+          bucket,
+          rect,
           hoverMask,
           clearHoverMask,
           undo,

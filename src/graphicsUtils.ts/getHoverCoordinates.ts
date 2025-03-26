@@ -5,7 +5,7 @@ export const getHoverCoordinates = (
   clientY: number, 
   position: Position,
   size: Dimensions,
-  zoom: number,
+  scale: number,
   ctx: CanvasRenderingContext2D, 
   toolSize: ToolSize
 ) => {
@@ -13,14 +13,14 @@ export const getHoverCoordinates = (
 
   const {x: drawingAreaX, y: drawingAreaY } = position
 
-  const localX =  (clientX - left) - (drawingAreaX / zoom)
-  const localY = (clientY - top) - (drawingAreaY / zoom)
+  const localX =  (clientX - left) - (drawingAreaX)
+  const localY = (clientY - top) - (drawingAreaY)
 
   // terminate early if outside of drawing area
   if (localX < 0 || 
     localY < 0 || 
-    localX > (size.width * zoom) || 
-    localY > (size.height * zoom)
+    localX > (size.width) || 
+    localY > (size.height)
   ) {
     console.debug("OOB")
     return {
@@ -31,10 +31,10 @@ export const getHoverCoordinates = (
     }
   }
 
-  const relativeClientX = Math.floor(((localX) / 4) / zoom)
+  const relativeClientX = Math.floor(((localX) / scale))
   const x = Math.floor((relativeClientX)-Math.floor(toolSize/2)) 
 
-  const relativeClientY = Math.floor(((localY) / 4) / zoom)
+  const relativeClientY = Math.floor(((localY) / scale))
   const y = Math.floor((relativeClientY)-Math.floor(toolSize/2))
   
   return {

@@ -5,7 +5,11 @@ import { getHoverCoordinates } from "../graphicsUtils/getHoverCoordinates";
 import { CanvasDrawStack } from "../classes/CanvasDrawStack";
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor";
 import { useOffscreenBuffer } from "../hooks/useOffscreenBuffer";
-import { getFillSpace } from "../graphicsUtils/getFillSpace";
+import { floodFill } from "../graphicsUtils/floodFill";
+import { MovementTracker } from "../classes/MovementTracker";
+import { SelectionTracker } from "../classes/SelectionTracker";
+import { drawRect, RectBounds } from "../graphicsUtils/drawRect";
+import { getRectWalls } from "../graphicsUtils/getRectWalls";
 
 export interface CanvasContext {
   setup: (
@@ -24,8 +28,9 @@ export interface CanvasContext {
   resetMousePosition: () => void
   canvasDrawStack: CanvasDrawStack;
   canvasToolsConfig: CanvasToolsConfig;
-  canvasViewportConfig: CanvasViewportConfig
-  log: () => void
+  canvasViewportConfig: CanvasViewportConfig;
+  selectionTracker: SelectionTracker;
+  log: () => void;
 }
 
 export interface CanvasController {
@@ -53,17 +58,23 @@ export const CanvasProvider = ({
 
   const [, setIsReady] = useState(false)
 
+  // main tools 
   const canvasToolsConfig = useCanvasToolsConfig()
   const canvasViewportConfig = useCanvasViewportConfig()
   const canvasDrawStack = useMemo(() => new CanvasDrawStack(), [])
+
+  // utilities
   const colorProcessor = useMemo(() => new ColorProcessor(), [])
+  const movementTracker = useMemo(() => new MovementTracker(), [])
+  const selectionTracker = useMemo(() => new SelectionTracker(), [])
 
-  const { selectedTool, colors } = canvasToolsConfig
-
+  // rendering context
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const offscreenBuffer = useOffscreenBuffer()
+
+  const { selectedTool, colors } = canvasToolsConfig
 
   const canvasUpdate = useRef({
     willDraw: false,
@@ -130,16 +141,21 @@ export const CanvasProvider = ({
     drawTransparencyGrid()
   }
 
-  const drawCanvas = () => {
-    if (!canvasRenderingContext.current) {
+  const drawCanvas = (
+    ctx: CanvasRenderingContext2D | null = canvasRenderingContext.current,
+    buffer: OffscreenCanvasRenderingContext2D | null = offscreenBuffer.drawingBuffer
+  ) => {
+    if (!ctx) {
       throw new Error("Set up the canvas first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
+    if (!buffer) {
       throw new Error("Drawing buffer buffer not ready")
     }
 
-    const buffer = offscreenBuffer.drawingBuffer
-    const ctx = canvasRenderingContext.current
+    console.debug("drew")
+
+    // const buffer = offscreenBuffer.drawingBuffer
+    // const ctx = canvasRenderingContext.current
     const { position, size } = canvasViewportConfig.dimensions.ref.current
 
     const { x, y } = position
@@ -356,7 +372,7 @@ export const CanvasProvider = ({
     if (!offscreenBuffer.drawingBuffer) {
       throw new Error("Drawing buffer buffer not ready")
     }
-    
+
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
 
@@ -374,8 +390,52 @@ export const CanvasProvider = ({
 
     const fillColor = colors.palette[colors.current]
 
-    getFillSpace(x, y, fillColor, resolution, buffer, canvasDrawStack, colorProcessor)
+    floodFill(x, y, fillColor, resolution, buffer, canvasDrawStack, colorProcessor)
     drawCanvas()
+  }
+
+
+  const finishRect = (
+    rectBounds: RectBounds, 
+    resolution: Dimensions, 
+    rgba: RGBA, 
+    buffer: OffscreenCanvasRenderingContext2D
+  ) => {
+    const { x1, y1, x2, y2 } = rectBounds
+    const [ r, g, b ] = rgba
+
+    const rectWalls = getRectWalls(x1, y1, x2, y2)
+    const imageData = buffer.getImageData(0, 0, resolution.width, resolution.height)
+    for (let i = 0; i < rectWalls.length; i++) {
+      const { x, y } = rectWalls[i]
+      const index = (x + ((resolution.width) * y)) * 4
+      const previousColorData: RGBA = [
+        imageData.data[index],
+        imageData.data[index + 1],
+        imageData.data[index + 2],
+        imageData.data[index + 3]
+      ]
+      const difference = colorProcessor.getRGBDifference(previousColorData, rgba)
+      canvasDrawStack.push({
+        ...rectWalls[i],
+        rgb: difference,
+      })
+    }
+    buffer.fillStyle = `rgb(${r},${g},${b})`
+    drawRect(
+      buffer, x1, y1, x2, y2
+    )
+    canvasDrawStack.commit()
+  }
+
+  const updateRect = (cursorPosition: Position, rectBounds: RectBounds, rgba: RGBA, buffer: OffscreenCanvasRenderingContext2D) => {
+    const { x1, y1, x2, y2 } = rectBounds;
+    const [r, g, b] = rgba;
+    buffer.fillStyle = `rgba(${r},${g},${b})`
+    drawRect(
+      buffer, x1, y1, x2, y2
+    )
+    selectionTracker.update(cursorPosition.x, cursorPosition.y)
   }
 
   const rect = (clientX: number, clientY: number) => {
@@ -384,6 +444,9 @@ export const CanvasProvider = ({
     }
     if (!offscreenBuffer.drawingBuffer) {
       throw new Error("Drawing buffer buffer not ready")
+    }
+    if (!offscreenBuffer.hoverOverlayBuffer) {
+      throw new Error("Hover overlay buffer buffer not ready")
     }
 
     const [r, g, b, a] = colors.palette[colors.current]
@@ -394,58 +457,47 @@ export const CanvasProvider = ({
 
     const ctx = canvasRenderingContext.current
     const buffer = offscreenBuffer.drawingBuffer
+    const overlayBuffer = offscreenBuffer.hoverOverlayBuffer
 
-    const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
+    const { position, size, scale, resolution } = canvasViewportConfig.dimensions.ref.current
     const toolSize = canvasToolsConfig[selectedTool.key].width
-    console.debug("rect")
+
+    if (canvasUpdate.current.willDraw || canvasUpdate.current.willClear) {
+      return
+    }
     const {
       x,
       y,
-      toolSizeX,
-      toolSizeY
     } = getHoverCoordinates(clientX, clientY, position, size, scale, ctx, toolSize)
 
     if (x === null || y === null) {
       return
     }
 
-    const imageData = buffer.getImageData(x, y, toolSizeX, toolSizeY)
+    const rectBounds = selectionTracker.getRectBounds()
 
-    buffer.strokeStyle = `rgb(${r},${g},${b})`
-    buffer.beginPath()
-    buffer.rect(x, y, toolSizeX*10, toolSizeY*10)
-    buffer.stroke()
-    buffer.closePath()
-    const surfaceArea = toolSizeX * toolSizeY
+    clearHoverMask()
+    overlayBuffer.clearRect(0, 0, resolution.width, resolution.height)
+
+    if (!selectionTracker.isTracking) {
+      selectionTracker.track(x, y)
+    } else if (selectionTracker.shouldCommit) {
+      if (!rectBounds) return
+      finishRect(rectBounds, resolution, [r,g,b,a], buffer)
+    } else {
+      if (!rectBounds) return
+      updateRect({x,y}, rectBounds, [r,g,b,a], overlayBuffer)
+    }
 
     requestAnimationFrame(() => {
-      clearCanvas()
-      drawCanvas()
+      canvasUpdate.current.willClear = false;
+      canvasUpdate.current.willDraw = false;
+      drawCanvas(hoverOverlayCanvasRenderingContext.current, overlayBuffer)
+      if (selectionTracker.shouldCommit) {
+        drawCanvas()
+        selectionTracker.untrack()
+      }
     })
-
-    // for (let i = 0; i < surfaceArea; i++) {
-    //   const pixelX = x + (i % toolSizeX)
-    //   const pixelY = y + Math.floor(i / toolSizeY)
-    //   if (pixelX > resolution.width - 1 || pixelY > resolution.height - 1) {
-    //     continue
-    //   }
-    //   const index = 4 * i
-    //   const previousColorData: RGBA = [
-    //     imageData.data[index],
-    //     imageData.data[index + 1],
-    //     imageData.data[index + 2],
-    //     imageData.data[index + 3]
-    //   ]
-
-    //   const newColorData: RGBA = [r, g, b, a]
-    //   const difference = colorProcessor.getRGBDifference(previousColorData, newColorData)
-
-    //   canvasDrawStack.push({
-    //     x: pixelX,
-    //     y: pixelY,
-    //     rgb: difference,
-    //   })
-    // }
   }
 
   const hoverMask = (clientX: number, clientY: number) => {
@@ -790,6 +842,7 @@ export const CanvasProvider = ({
         canvasDrawStack,
         canvasToolsConfig,
         canvasViewportConfig,
+        selectionTracker,
         log: () => console.debug(canvasRenderingContext)
       }}
     >

@@ -9,7 +9,7 @@ export interface CanvasToolsConfig {
   bucket: ToolOptions;
   rect: ToolOptions;
   zoom: any;
-  move: any;
+  hand: any;
 }
 
 export interface SelectedTool {
@@ -17,16 +17,20 @@ export interface SelectedTool {
   set: (key: ToolType) => void
 }
 
-export interface ColorOptions {
-  palette: RGBA[];
-  current: number;
+export interface ColorOptions extends ColorState {
+  swapActive: () => void;
+  setActive: (color: RGBA, index: number) => void;
   setCurrent: (index: number) => void;
   setPalette: (color: RGBA, index: number) => void
 }
 
-export type ToolType = "pencil" | "eraser" | "move" | "zoom" | "bucket"
+export type ToolType = "pencil" | "eraser" | "hand" | "zoom" | "bucket" | "rect"
 
-type ColorState = Omit<ColorOptions, "setCurrent" | "setPalette">
+export interface ColorState {
+  palette: RGBA[];
+  activePair: RGBA[];
+  current: number;
+}
 
 type ToolState = Omit<ToolOptions, "setWidth">
 
@@ -40,7 +44,8 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   const [colorOptions, setColorOptions] =
     useState<ColorState>({
-      palette: [[255, 0 , 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]],
+      activePair: [[0, 0, 0, 255], [255, 255, 255, 255]],
+      palette: [[255, 0, 0, 255], [0, 255, 0, 255], [0, 0, 255, 255]],
       current: 0
     })
 
@@ -74,27 +79,32 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
     colors: {
       ...colorOptions,
       setCurrent: (index: number) => setColorOptions(c => ({ ...c, current: index })),
-      setPalette: (color: RGBA, index: number) => 
-        setColorOptions(c => ({ 
-          ...c, 
-          palette: c.palette.map((c: RGBA, i: number) => i === index ? color : c) 
-        }))
+      setPalette: (color: RGBA, index: number) =>
+        setColorOptions(c => ({
+          ...c,
+          palette: c.palette.map((c: RGBA, i: number) => i === index ? color : c)
+        })),
+      swapActive: () => setColorOptions(o => ({ ...o, activePair: [o.activePair[1], o.activePair[0]] })),
+      setActive: (color: RGBA, index: number) => {
+        console.debug("hi")
+        setColorOptions(o => ({ ...o, activePair: o.activePair.map((c, i) => i === index ? color : c) }))
+      }
     },
     pencil: {
       ...pencilToolOptions,
-      setWidth: (width: number) => setPencilToolOptions(p => ({...p, width: width}))
+      setWidth: (width: number) => setPencilToolOptions(p => ({ ...p, width: width }))
     },
     eraser: {
       ...eraserToolOptions,
-      setWidth: (width: number) => setEraserToolOptions(p => ({...p, width: width}))
+      setWidth: (width: number) => setEraserToolOptions(p => ({ ...p, width: width }))
     },
     bucket: {
       ...bucketToolOptions,
-      setWidth: () => {}
+      setWidth: () => { }
     },
     rect: {
       ...rectToolOptions,
-      setWidth: () => {}
+      setWidth: () => { }
     },
     zoom: {},
     move: {}

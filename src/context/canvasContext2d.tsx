@@ -1,4 +1,4 @@
-import { createContext, PropsWithChildren, RefObject, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, PropsWithChildren, RefObject, useContext, useMemo, useRef, useState } from "react";
 import { CanvasToolsConfig, SelectedTool, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
 import { CanvasDimensions, CanvasViewportConfig, Dimensions, Position, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
 import { getHoverCoordinates } from "../graphicsUtils/getHoverCoordinates";
@@ -37,7 +37,7 @@ export interface CanvasController {
   drawTransparencyGrid: () => void;
   pencil: (clientX: number, clientY: number) => void;
   eraser: (clientX: number, clientY: number) => void;
-  move: (clientX: number, clientY: number) => void;
+  hand: (clientX: number, clientY: number) => void;
   bucket: (clientX: number, clientY: number) => void;
   rect: (clientX: number, clientY: number) => void;
   hoverMask: (clientX: number, clientY: number) => void;
@@ -152,10 +152,6 @@ export const CanvasProvider = ({
       throw new Error("Drawing buffer buffer not ready")
     }
 
-    console.debug("drew")
-
-    // const buffer = offscreenBuffer.drawingBuffer
-    // const ctx = canvasRenderingContext.current
     const { position, size } = canvasViewportConfig.dimensions.ref.current
 
     const { x, y } = position
@@ -236,6 +232,7 @@ export const CanvasProvider = ({
       Math.floor(drawingAreaWidth),
       Math.floor(drawingAreaHeight)
     );
+
   }
 
   // optimize & add Bresenham's Line Algorithm/interpolation
@@ -247,7 +244,7 @@ export const CanvasProvider = ({
       throw new Error("Drawing buffer buffer not ready")
     }
 
-    const [r, g, b, a] = colors.palette[colors.current]
+    const [r, g, b, a] = colors.activePair[0]
 
     if (r === 0 && g === 0 && b === 0 && a === 0) {
       return eraser(clientX, clientY)
@@ -388,7 +385,7 @@ export const CanvasProvider = ({
       return
     }
 
-    const fillColor = colors.palette[colors.current]
+    const fillColor = colors.activePair[0]
 
     floodFill(x, y, fillColor, resolution, buffer, canvasDrawStack, colorProcessor)
     drawCanvas()
@@ -449,7 +446,7 @@ export const CanvasProvider = ({
       throw new Error("Hover overlay buffer buffer not ready")
     }
 
-    const [r, g, b, a] = colors.palette[colors.current]
+    const [r, g, b, a] = colors.activePair[0]
 
     if (r === 0 && g === 0 && b === 0 && a === 0) {
       return eraser(clientX, clientY)
@@ -512,7 +509,7 @@ export const CanvasProvider = ({
     const ctx = hoverOverlayCanvasRenderingContext.current
     const buffer = offscreenBuffer.hoverOverlayBuffer
 
-    const { viewport, position, size, resolution, zoom, scale } = canvasViewportConfig.dimensions.ref.current
+    const { viewport, position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
     const { width: drawingAreaWidth, height: drawingAreaHeight } = size
     const { width: viewportWidth, height: viewportHeight } = viewport
     const { x: drawingAreaX, y: drawingAreaY } = position
@@ -709,7 +706,7 @@ export const CanvasProvider = ({
     })
   }
 
-  const move = (clientX: number, clientY: number) => {
+  const hand = (clientX: number, clientY: number) => {
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
@@ -763,7 +760,6 @@ export const CanvasProvider = ({
       drawTransparencyGrid()
     })
   }
-
 
   // TODO
   // eraser
@@ -823,7 +819,7 @@ export const CanvasProvider = ({
           clearHoverMask,
           undo,
           redo,
-          move,
+          hand,
           zoom,
           selected: selectedTool
         },

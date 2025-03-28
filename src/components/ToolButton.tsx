@@ -10,11 +10,9 @@ export const ToolButton = ({
   isSelected,
   children, 
 }: PropsWithChildren<ToolButton>) => {
-
-
   return (
     <button
-      className="bg-slate-700 text-white p-2"
+      className={`rounded-lg ${isSelected ? "bg-neutral-600" : "bg-neutral-700"} hover:bg-neutral-600 text-white p-2`}
       onClick={onClick}
     >
       {children}

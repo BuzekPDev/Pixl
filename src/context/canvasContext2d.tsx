@@ -766,13 +766,11 @@ export const CanvasProvider = ({
 
 
   // TODO
-  // eraser
-  // figure out a way to do transparent as a color
-  // edge pixel artifacting
-  // FIXED duplication after drawing, resizing, moving then drawing
-  // another canvas layer for the transparency grid? or some other way to have the drawable area be a "window" like in other editors
-  // THEN
-  // WE MOVE ON TO THE FUCKING UI
+  // canvas frame system (check out notes app for info)
+  // onion skin & animation
+  // frame preview (canvas-based)
+  // refactor the coordinate system it hurts to look at
+
   return (
     <canvasContext.Provider
       value={{

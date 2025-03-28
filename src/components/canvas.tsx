@@ -29,6 +29,10 @@ export const Canvas = ({
   
     api.controller.drawTransparencyGrid()
 
+  }, [width, height])
+
+  useEffect(() => {
+
     const keyboardHandler = (e: KeyboardEvent) => {
       const {selected} = api.controller
       if (e.ctrlKey) {
@@ -43,7 +47,7 @@ export const Canvas = ({
       } else {
         switch (e.code) {
           case "KeyH": // h stands for hand I might change it later
-            selected.set("move")
+            selected.set("hand")
             break;
           case "KeyP": 
             selected.set("pencil")
@@ -53,12 +57,15 @@ export const Canvas = ({
             break;
         }
       }
-      
     } 
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e: PointerEvent) => {
       isDrawing.current = false
       api.canvasDrawStack.commit()
+      if (api.selectionTracker.isTracking) {
+        api.selectionTracker.finish()
+        api.controller.rect(e.clientX, e.clientY)
+      }
     }
 
     window.addEventListener("keydown", keyboardHandler)
@@ -66,9 +73,9 @@ export const Canvas = ({
 
     return () => {
       window.removeEventListener("keydown", keyboardHandler)
-      window.addEventListener("pointerup", handlePointerUp)
+      window.removeEventListener("pointerup", handlePointerUp)
     }
-  }, [width, height])
+  }, [api.controller])
 
   return (
     <div className="relative">
@@ -89,16 +96,25 @@ export const Canvas = ({
           api.controller[selected.key](x, y)
           isDrawing.current = true
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
           isDrawing.current=false
           api.canvasDrawStack.commit()
           api.resetMousePosition()
+          // api.selectionTracker.finish()
+          // if (api.selectionTracker.isTracking) {
+          //   api.selectionTracker.finish()
+          //   api.controller.rect(e.clientX, e.clientY)
+          // }
         }}
         onPointerMove={(e) => {
           if (isDrawing.current) {
             api.controller[selected.key](e.clientX, e.clientY)
           }
-          api.controller.hoverMask(e.clientX, e.clientY)
+          if (api.selectionTracker.isTracking) {
+            //
+          } else {
+            api.controller.hoverMask(e.clientX, e.clientY)
+          }
         }}
         onPointerOut={() => {
           api.controller.clearHoverMask()

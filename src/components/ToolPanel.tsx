@@ -18,7 +18,7 @@ export const ToolPanel = () => {
 
   return (
     <aside
-      className="w-20 h-full bg-neutral-800 pt-10 stroke-white fill-white"
+      className="flex flex-col items-center gap-2 w-20 h-full bg-neutral-800 pt-10 stroke-white fill-white"
     >
       <ToolButton
         onClick={() => {

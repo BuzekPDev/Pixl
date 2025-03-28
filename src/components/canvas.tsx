@@ -100,11 +100,6 @@ export const Canvas = ({
           isDrawing.current=false
           api.canvasDrawStack.commit()
           api.resetMousePosition()
-          // api.selectionTracker.finish()
-          // if (api.selectionTracker.isTracking) {
-          //   api.selectionTracker.finish()
-          //   api.controller.rect(e.clientX, e.clientY)
-          // }
         }}
         onPointerMove={(e) => {
           if (isDrawing.current) {

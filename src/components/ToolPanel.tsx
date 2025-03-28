@@ -14,11 +14,11 @@ export const ToolPanel = () => {
   const [r,g,b] = useMemo(() => {
     return colors.palette[colors.current]
   }, [colors.current, colors.palette])
-console.debug(`#${r.toString(16)}${g.toString(16)}${b.toString(16)}`)
-  console.debug(controller.selected.key)
+
+
   return (
     <aside
-      className="w-20 h-full bg-green-700 pt-20 stroke-white fill-white"
+      className="w-20 h-full bg-neutral-800 pt-10 stroke-white fill-white"
     >
       <ToolButton
         onClick={() => {
@@ -61,9 +61,6 @@ console.debug(`#${r.toString(16)}${g.toString(16)}${b.toString(16)}`)
         {icons.rect}
       </ToolButton>
       <ColorHub />
-      <input 
-        type="color" 
-        value={`#${r.toString(16).padEnd(2, "0")}${g.toString(16).padEnd(2, "0")}${b.toString(16).padEnd(2, "0")}`}/>
     </aside>
   )
 }

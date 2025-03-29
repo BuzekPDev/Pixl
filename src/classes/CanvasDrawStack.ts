@@ -6,57 +6,96 @@ export type PixelData = {
   rgb: RGBA;
 } 
 
+export type Step = Array<PixelData>
+
+export type Stack = Array<Step>
+
+export type MetaStack = Array<{
+  stack: Stack;
+  index: number
+}>
+
 export class CanvasDrawStack {
 
-  stack: Array<Array<PixelData>> = [];
-  index: number = -1;
-  currentStroke: Array<PixelData> = [];
+  private metaStack: MetaStack = [];
+  private metaStackIndex: number = -1;
+  private step: Step = [];
 
-  push (pixel: PixelData) {
-    const [r, g, b, a] = pixel.rgb
-    
-    // prevent overdraw
-    if (r === 0 && g === 0 && b === 0 && a === 0) return
-
-    this.currentStroke.push(pixel)
+  push (stepData: Step) {
+    this.step = this.step.concat(stepData)
   }
 
   commit () {
-    if (!this.currentStroke.length) return
+    if (!this.step.length || !this.metaStackIndex) return
 
-    this.stack = this.stack.slice(0, this.index+1)
+    const frame = this.metaStack[this.metaStackIndex]
 
-    this.stack.push(this.currentStroke)
-    this.currentStroke = []
-    this.index = this.stack.length-1
+    // overwrite future steps if commiting after undo 
+    frame.stack = frame.stack.slice(0, frame.index+1) 
+
+    frame.stack.push(this.step)
+    frame.index = frame.stack.length-1
+    this.step = []
   }
 
-  getCurrent () {
-    if (this.index !== -1) {
-      return this.stack[this.index]
+  setCurrentStack (metaStackIndex: number) {
+    this.metaStackIndex = metaStackIndex
+  } 
+
+  getCurrentStep () {
+    if (this.metaStackIndex === -1) return null
+    const frame = this.metaStack[this.metaStackIndex]
+
+    if (frame.index !== -1) {
+      return frame.stack[frame.index]
+    }
+    return null
+  }
+
+  deleteStack (metaStackIndex: number) {
+    this.metaStack.splice(metaStackIndex, 1)
+
+    if (this.metaStackIndex >= metaStackIndex) {
+      this.metaStackIndex = Math.min(this.metaStackIndex-1, this.metaStack.length-1)
     }
   }
 
+  addStack () {
+    this.metaStack.push({
+      stack: [],
+      index: 0
+    })
+    this.metaStackIndex = this.metaStack.length-1
+  }
+
   undo () {
-    if (this.index >= 0) {
-      this.index--
-      return this.stack[this.index+1]
+    if (this.metaStackIndex === -1) return null
+    const frame = this.metaStack[this.metaStackIndex]
+    console.debug(frame)
+
+    if (frame.index >= 0) {
+      frame.index--
+      return frame.stack[frame.index+1]
     }
     return null
   }
 
   redo () {
-    if (this.index < this.stack.length - 1) { 
-      this.index++
-      return this.stack[this.index]
+    if (this.metaStackIndex === -1) return null
+    const frame = this.metaStack[this.metaStackIndex]
+
+    if (frame.index < frame.stack.length - 1) { 
+      frame.index++
+      return frame.stack[frame.index]
     }
     return null
   }
 
   debug () {
     return {
-      stack: this.stack,
-      stroke: this.currentStroke
+      metaStack: this.metaStack,
+      stroke: this.step,
+      currentStack: this.metaStack[this.metaStackIndex]
     }
   }
 } 

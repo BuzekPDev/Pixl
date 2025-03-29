@@ -1,5 +1,5 @@
-import { CanvasDrawStack } from "../classes/CanvasDrawStack"
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor"
+import { FrameManagerApi } from "../hooks/useCanvasFrameManager"
 import { Dimensions } from "../hooks/useCanvasViewportConfig"
 
 export const floodFill = (
@@ -8,7 +8,7 @@ export const floodFill = (
   rgba: RGBA, 
   resolution: Dimensions, 
   buffer: OffscreenCanvasRenderingContext2D,
-  canvasDrawStack: CanvasDrawStack,
+  frameManager: FrameManagerApi,
   colorProcessor: ColorProcessor
 ) => {
 
@@ -34,6 +34,7 @@ export const floodFill = (
   if (tr === r && tg === g && tb === b && ta === a) return
 
   const colorDifference = colorProcessor.getRGBDifference([tr,tg,tb,ta], [r,g,b,a])
+  const step = []
 
   while (queue.length) {
     const index = queue[start++]
@@ -62,7 +63,7 @@ export const floodFill = (
       const pixelX = trueIndex % resolution.width
       const pixelY = Math.floor(trueIndex / resolution.width)
 
-      canvasDrawStack.push({
+      step.push({
         x: Math.floor((index/4)%resolution.width),
         y: Math.floor((index / 4) / resolution.width),
         rgb: colorDifference
@@ -83,8 +84,9 @@ export const floodFill = (
       })  
     }
   }
-
-  canvasDrawStack.commit()
+  frameManager.updateStep(step)
+  frameManager.finishStep()
+  
   const modifiedImage = new ImageData(modifiedImageData, resolution.width, resolution.height)
   buffer.putImageData(modifiedImage, 0, 0)
 }

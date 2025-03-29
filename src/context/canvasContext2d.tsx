@@ -2,7 +2,6 @@ import { createContext, PropsWithChildren, RefObject, useContext, useMemo, useRe
 import { CanvasToolsConfig, SelectedTool, useCanvasToolsConfig } from "../hooks/useCanvasToolsConfig";
 import { CanvasDimensions, CanvasViewportConfig, Dimensions, Position, useCanvasViewportConfig } from "../hooks/useCanvasViewportConfig";
 import { getHoverCoordinates } from "../graphicsUtils/getHoverCoordinates";
-import { CanvasDrawStack } from "../classes/CanvasDrawStack";
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor";
 import { useOffscreenBuffer } from "../hooks/useOffscreenBuffer";
 import { floodFill } from "../graphicsUtils/floodFill";
@@ -10,6 +9,7 @@ import { MovementTracker } from "../classes/MovementTracker";
 import { SelectionTracker } from "../classes/SelectionTracker";
 import { drawRect, RectBounds } from "../graphicsUtils/drawRect";
 import { getRectWalls } from "../graphicsUtils/getRectWalls";
+import { FrameManagerApi, useCanvasFrameManager } from "../hooks/useCanvasFrameManager";
 
 export interface CanvasContext {
   setup: (
@@ -26,7 +26,7 @@ export interface CanvasContext {
     (dims: Record<K, CanvasDimensions[K]>) => void;
   controller: CanvasController;
   resetMousePosition: () => void
-  canvasDrawStack: CanvasDrawStack;
+  frameManager: FrameManagerApi;
   canvasToolsConfig: CanvasToolsConfig;
   canvasViewportConfig: CanvasViewportConfig;
   selectionTracker: SelectionTracker;
@@ -56,12 +56,13 @@ export const CanvasProvider = ({
   children
 }: PropsWithChildren<any>) => {
 
-  const [, setIsReady] = useState(false)
+  // only needs to cause a rerender
+  const [,setIsReady] = useState(false)
 
   // main tools 
   const canvasToolsConfig = useCanvasToolsConfig()
   const canvasViewportConfig = useCanvasViewportConfig()
-  const canvasDrawStack = useMemo(() => new CanvasDrawStack(), [])
+  const frameManager = useCanvasFrameManager()
 
   // utilities
   const colorProcessor = useMemo(() => new ColorProcessor(), [])
@@ -141,15 +142,20 @@ export const CanvasProvider = ({
     drawTransparencyGrid()
   }
 
-  const drawCanvas = (
-    ctx: CanvasRenderingContext2D | null = canvasRenderingContext.current,
-    buffer: OffscreenCanvasRenderingContext2D | null = offscreenBuffer.drawingBuffer
-  ) => {
+  const drawCanvas = (args: {
+    ctx: CanvasRenderingContext2D | null,
+    buffer: OffscreenCanvasRenderingContext2D | null
+  } = {
+    ctx: canvasRenderingContext.current,
+    buffer: frameManager.getCurrentFrame()
+  }) => {
+    const {ctx, buffer} = args 
+
     if (!ctx) {
       throw new Error("Set up the canvas first")
     }
     if (!buffer) {
-      throw new Error("Drawing buffer buffer not ready")
+      throw new Error("Buffer not ready")
     }
 
     const { position, size } = canvasViewportConfig.dimensions.ref.current
@@ -240,18 +246,20 @@ export const CanvasProvider = ({
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
+
+    const ctx = canvasRenderingContext.current
+    const buffer = frameManager.getCurrentFrame()
+
+    if (!buffer) {
       throw new Error("Drawing buffer buffer not ready")
     }
 
     const [r, g, b, a] = colors.activePair[0]
 
+    // potential "transparent" color support  
     if (r === 0 && g === 0 && b === 0 && a === 0) {
       return eraser(clientX, clientY)
     }
-
-    const ctx = canvasRenderingContext.current
-    const buffer = offscreenBuffer.drawingBuffer
 
     const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
     const toolSize = canvasToolsConfig[selectedTool.key].width
@@ -279,6 +287,8 @@ export const CanvasProvider = ({
       drawCanvas()
     })
 
+    const step = []
+
     for (let i = 0; i < surfaceArea; i++) {
       const pixelX = x + (i % toolSizeX)
       const pixelY = y + Math.floor(i / toolSizeY)
@@ -296,24 +306,26 @@ export const CanvasProvider = ({
       const newColorData: RGBA = [r, g, b, a]
       const difference = colorProcessor.getRGBDifference(previousColorData, newColorData)
 
-      canvasDrawStack.push({
+      step.push({
         x: pixelX,
         y: pixelY,
         rgb: difference,
       })
     }
+    frameManager.updateStep(step)
   }
 
   const eraser = (clientX: number, clientY: number) => {
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
-      throw new Error("Drawing buffer buffer not ready")
-    }
 
     const ctx = canvasRenderingContext.current
-    const buffer = offscreenBuffer.drawingBuffer
+    const buffer = frameManager.getCurrentFrame()
+
+    if (!buffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
 
     const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
     const toolSize = canvasToolsConfig[selectedTool.key].width
@@ -340,6 +352,8 @@ export const CanvasProvider = ({
       drawCanvas()
     })
 
+    const step = [];
+
     for (let i = 0; i < surfaceArea; i++) {
       const pixelX = x + (i % toolSizeX)
       const pixelY = y + Math.floor(i / toolSizeY)
@@ -354,24 +368,26 @@ export const CanvasProvider = ({
         imageData.data[index + 3]
       ]
 
-      canvasDrawStack.push({
+      step.push({
         x: pixelX,
         y: pixelY,
         rgb: previousColorData,
       })
     }
+    frameManager.updateStep(step)
   }
 
   const bucket = (clientX: number, clientY: number) => {
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
-      throw new Error("Drawing buffer buffer not ready")
-    }
 
     const ctx = canvasRenderingContext.current
-    const buffer = offscreenBuffer.drawingBuffer
+    const buffer = frameManager.getCurrentFrame()
+    
+    if (!buffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
 
     const { position, size, resolution, scale } = canvasViewportConfig.dimensions.ref.current
     const toolSize = canvasToolsConfig[selectedTool.key].width
@@ -387,10 +403,9 @@ export const CanvasProvider = ({
 
     const fillColor = colors.activePair[0]
 
-    floodFill(x, y, fillColor, resolution, buffer, canvasDrawStack, colorProcessor)
+    floodFill(x, y, fillColor, resolution, buffer, frameManager, colorProcessor)
     drawCanvas()
   }
-
 
   const finishRect = (
     rectBounds: RectBounds, 
@@ -403,6 +418,9 @@ export const CanvasProvider = ({
 
     const rectWalls = getRectWalls(x1, y1, x2, y2)
     const imageData = buffer.getImageData(0, 0, resolution.width, resolution.height)
+    
+    const step = []
+    
     for (let i = 0; i < rectWalls.length; i++) {
       const { x, y } = rectWalls[i]
       const index = (x + ((resolution.width) * y)) * 4
@@ -413,25 +431,22 @@ export const CanvasProvider = ({
         imageData.data[index + 3]
       ]
       const difference = colorProcessor.getRGBDifference(previousColorData, rgba)
-      canvasDrawStack.push({
+      step.push({
         ...rectWalls[i],
         rgb: difference,
       })
     }
     buffer.fillStyle = `rgb(${r},${g},${b})`
-    drawRect(
-      buffer, x1, y1, x2, y2
-    )
-    canvasDrawStack.commit()
+    drawRect(buffer, x1, y1, x2, y2)
+    frameManager.updateStep(step)
+    frameManager.finishStep()
   }
 
   const updateRect = (cursorPosition: Position, rectBounds: RectBounds, rgba: RGBA, buffer: OffscreenCanvasRenderingContext2D) => {
     const { x1, y1, x2, y2 } = rectBounds;
     const [r, g, b] = rgba;
     buffer.fillStyle = `rgba(${r},${g},${b})`
-    drawRect(
-      buffer, x1, y1, x2, y2
-    )
+    drawRect(buffer, x1, y1, x2, y2)
     selectionTracker.update(cursorPosition.x, cursorPosition.y)
   }
 
@@ -439,22 +454,19 @@ export const CanvasProvider = ({
     if (!canvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
-      throw new Error("Drawing buffer buffer not ready")
-    }
     if (!offscreenBuffer.hoverOverlayBuffer) {
       throw new Error("Hover overlay buffer buffer not ready")
     }
 
-    const [r, g, b, a] = colors.activePair[0]
-
-    if (r === 0 && g === 0 && b === 0 && a === 0) {
-      return eraser(clientX, clientY)
-    }
-
     const ctx = canvasRenderingContext.current
-    const buffer = offscreenBuffer.drawingBuffer
+    const buffer = frameManager.getCurrentFrame()
     const overlayBuffer = offscreenBuffer.hoverOverlayBuffer
+
+    if (!buffer) {
+      throw new Error("Drawing buffer buffer not ready")
+    }
+    
+    const [r, g, b, a] = colors.activePair[0]
 
     const { position, size, scale, resolution } = canvasViewportConfig.dimensions.ref.current
     const toolSize = canvasToolsConfig[selectedTool.key].width
@@ -489,7 +501,7 @@ export const CanvasProvider = ({
     requestAnimationFrame(() => {
       canvasUpdate.current.willClear = false;
       canvasUpdate.current.willDraw = false;
-      drawCanvas(hoverOverlayCanvasRenderingContext.current, overlayBuffer)
+      drawCanvas({ctx: hoverOverlayCanvasRenderingContext.current, buffer: overlayBuffer})
       if (selectionTracker.shouldCommit) {
         drawCanvas()
         selectionTracker.untrack()
@@ -558,7 +570,9 @@ export const CanvasProvider = ({
       throw new Error("Set up the canvas first")
     }
 
-    if (!offscreenBuffer.drawingBuffer) {
+    const buffer = frameManager.getCurrentFrame()
+
+    if (!buffer) {
       throw new Error("Drawing buffer buffer not ready")
     }
 
@@ -566,11 +580,10 @@ export const CanvasProvider = ({
       return
     }
 
-    const buffer = offscreenBuffer.drawingBuffer
     const { resolution } = canvasViewportConfig.dimensions.ref.current
     const { width: bufferWidth, height: bufferHeight } = resolution
 
-    const previousFrame = canvasDrawStack.undo();
+    const previousFrame = frameManager.undo();
 
     if (!previousFrame) return
 
@@ -612,7 +625,9 @@ export const CanvasProvider = ({
       throw new Error("Set up the canvas first")
     }
 
-    if (!offscreenBuffer.drawingBuffer) {
+    const buffer = frameManager.getCurrentFrame()
+
+    if (!buffer) {
       throw new Error("Drawing buffer buffer not ready")
     }
 
@@ -620,11 +635,10 @@ export const CanvasProvider = ({
       return
     }
 
-    const buffer = offscreenBuffer.drawingBuffer
     const { resolution } = canvasViewportConfig.dimensions.ref.current
     const { width: bufferWidth, height: bufferHeight } = resolution
 
-    const nextFrame = canvasDrawStack.redo();
+    const nextFrame = frameManager.redo();
     if (!nextFrame) return
 
     const fullBuffer = buffer.getImageData(0, 0, bufferWidth, bufferHeight)
@@ -713,17 +727,14 @@ export const CanvasProvider = ({
     if (!transparencyGridCanvaRenderingContext.current) {
       throw new Error("Set up transparency grid first")
     }
-    if (!offscreenBuffer.drawingBuffer) {
-      throw new Error("Drawing buffer buffer not ready")
-    }
 
     if (canvasUpdate.current.willClear || canvasUpdate.current.willDraw) return
 
     // ctx drawing canvas context
-    const ctxDCC = canvasRenderingContext.current
+    const ctx = canvasRenderingContext.current
 
     const { position, zoom } = canvasViewportConfig.dimensions.ref.current
-    const { left, top } = ctxDCC.canvas.getBoundingClientRect()
+    const { left, top } = ctx.canvas.getBoundingClientRect()
 
     if (!mouseCoordinates.current) {
       mouseCoordinates.current = {
@@ -802,10 +813,13 @@ export const CanvasProvider = ({
             transparencyGridCanvaRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
           }
+          if (!frameManager.size()) {
+            frameManager.changeResolution(resolution)
+            frameManager.addFrame()
+          }
           setIsReady(true)
           resizeBuffers()
           canvasViewportConfig.dimensions.recenter()
-          drawCanvas()
         },
         controller: {
           drawTransparencyGrid,
@@ -833,10 +847,12 @@ export const CanvasProvider = ({
         resetMousePosition: () => {
           mouseCoordinates.current = null
         },
-        canvasDrawStack,
+        frameManager,
         canvasToolsConfig,
         canvasViewportConfig,
         selectionTracker,
+        drawCanvas,
+        clearCanvas,
         log: () => console.debug(canvasRenderingContext)
       }}
     >

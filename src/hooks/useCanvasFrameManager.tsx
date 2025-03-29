@@ -1,58 +1,58 @@
 import { useMemo, useState } from "react"
 import { CanvasFrameManager } from "../classes/CanvasFrameManager"
-import { CanvasDrawStack, PixelData, Step } from "../classes/CanvasDrawStack"
+import { CanvasDrawStack, Step } from "../classes/CanvasDrawStack"
 import { Dimensions } from "./useCanvasViewportConfig"
 
 
 export interface FrameManagerApi {
-  currentFrame: OffscreenCanvasRenderingContext2D;
-  currentFrameIndex: number;
+  getCurrentFrame: () => OffscreenCanvasRenderingContext2D | null;
+  getCurrentFrameIndex: () => number;
   setCurrentFrame: (index: number) => void;
   deleteFrame: (frameIndex: number) => void;
   changeResolution: (resolution: Dimensions) => void;
   addFrame: () => void;
   updateStep: (stepData: Step) => void;
   finishStep: () => void;
-  undo: () => Step;
-  redo: () => Step
+  undo: () => Step | null;
+  redo: () => Step | null;
 
   size: () => number
 }
 
 export const useCanvasFrameManager = () => {
 
-  // current frame index is kept in state to cause a rerender and update frame preview
-  // the metastack keeps track of the current frame too so I don't have to pass the index 
-  // to every method
-  const [current, setCurrent] = useState(0)
+  // current frame index needs to be updated synchronously but adding, deleting and changing current frame
+  // needs to cause a rerender the the frame preview updates accordingly
+  const [,forceUpdate] = useState(0)
 
   const frameManager = useMemo(() => new CanvasFrameManager(), [])
   const metaStack = useMemo(() => new CanvasDrawStack(), [])
 
-  // this should be done with a worker I think
+  // this should be done with a worker I think, might look into it in the future
   const changeResolution = (resolution: Dimensions) => {
     frameManager.changeResolution(resolution)
   }
 
+  const getCurrentFrame = () => frameManager.getCurrent()
+
+  const getCurrentFrameIndex = () => frameManager.getIndex()
+
   const setCurrentFrame = (index: number) => {
-    setCurrent(index)
     metaStack.setCurrentStack(index)
+    frameManager.setCurrent(index)
+    forceUpdate(r => r+1)
   }
 
   const deleteFrame = (frameIndex: number) => {
     frameManager.delete(frameIndex)
     metaStack.deleteStack(frameIndex)
-
-    if (current >= frameIndex) {
-      setCurrent(Math.min(current - 1, frameManager.size - 1))
-    }
+    forceUpdate(r => r+1)
   }
 
   const addFrame = () => {
-    console.debug(frameManager.resolution)
     frameManager.add()
     metaStack.addStack()
-    setCurrent(frameManager.size - 1)
+    forceUpdate(r => r+1)
   }
 
   const updateStep = (stepData: Step) => {
@@ -72,9 +72,8 @@ export const useCanvasFrameManager = () => {
   }
 
   return {
-    // ...frameManager,
-    currentFrame: frameManager.getFrame(current),
-    currentFrameIndex: current,
+    getCurrentFrame,
+    getCurrentFrameIndex,
     setCurrentFrame,
     deleteFrame,
     changeResolution,

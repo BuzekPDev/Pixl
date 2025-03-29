@@ -3,7 +3,8 @@ import { Dimensions } from "../hooks/useCanvasViewportConfig";
 export class CanvasFrameManager {
 
   private frames: Array<OffscreenCanvasRenderingContext2D> = [];
-   resolution: Dimensions = {width: 0, height: 0}
+  private frameIndex: number = -1;
+  private resolution: Dimensions = {width: 0, height: 0}
 
   size:number = 0 
 
@@ -12,16 +13,34 @@ export class CanvasFrameManager {
     if (context) {
       this.frames.push(context)
     }
+    this.frameIndex = this.size
     this.size = this.frames.length
   }
 
   delete (frameIndex: number) {
     this.frames.splice(frameIndex,1)
     this.size = this.frames.length
+
+    if (this.frameIndex >= frameIndex) {
+      this.frameIndex = Math.min(this.frameIndex - 1, this.size - 1)
+    }
   }
 
   getFrame (frameIndex: number) {
     return this.frames[frameIndex]
+  }
+
+  setCurrent (frameIndex: number) {
+    this.frameIndex = frameIndex;
+  }
+
+  getCurrent () {
+    if (this.frameIndex === -1) return null
+    return this.frames[this.frameIndex]
+  }
+
+  getIndex () {
+    return this.frameIndex
   }
 
   async changeResolution ({width, height}: Dimensions) {

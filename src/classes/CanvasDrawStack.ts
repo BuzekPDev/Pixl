@@ -26,7 +26,7 @@ export class CanvasDrawStack {
   }
 
   commit () {
-    if (!this.step.length || !this.metaStackIndex) return
+    if (!this.step.length || this.metaStackIndex === -1) return
 
     const frame = this.metaStack[this.metaStackIndex]
 
@@ -71,11 +71,10 @@ export class CanvasDrawStack {
   undo () {
     if (this.metaStackIndex === -1) return null
     const frame = this.metaStack[this.metaStackIndex]
-    console.debug(frame)
 
     if (frame.index >= 0) {
-      frame.index--
-      return frame.stack[frame.index+1]
+      // return the CURRENT frame to revert the frame delta
+      return frame.stack[frame.index--]
     }
     return null
   }
@@ -85,8 +84,8 @@ export class CanvasDrawStack {
     const frame = this.metaStack[this.metaStackIndex]
 
     if (frame.index < frame.stack.length - 1) { 
-      frame.index++
-      return frame.stack[frame.index]
+      // return the NEXT frame to apply the frame delta
+      return frame.stack[++frame.index]
     }
     return null
   }

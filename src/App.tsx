@@ -60,7 +60,7 @@ function App() {
     <div className='flex h-screen relative select-none'>
       <Header />
       <ToolPanel />
-      <main className='h-full box-border w-full pt-20'>
+      <main className='h-full box-border w-full pt-10'>
         <SizeObserver>
           <Canvas
             canvasWidth={640}
@@ -70,7 +70,7 @@ function App() {
           />
         </SizeObserver>
       </main>
-      <SettingsPanel />
+      {/* <SettingsPanel /> */}
       {/* <div>
         <label htmlFor="width">width</label>
         <input 

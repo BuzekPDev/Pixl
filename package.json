@@ -4,13 +4,18 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "vite",
+    "start": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.14",
+    "@uiw/react-color-block": "^2.4.5",
+    "@uiw/react-color-colorful": "^2.4.5",
+    "@uiw/react-color-hue": "^2.4.5",
+    "@uiw/react-color-shade-slider": "^2.4.5",
+    "@uiw/react-color-sketch": "^2.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwindcss": "^4.0.14"

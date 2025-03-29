@@ -20,11 +20,11 @@ export const Swatch = ({color, onClick, size, isSelected = false, children}: Pro
 
   return (
     <button
-      className={`${SIZE[size]} rounded-lg border-3 border-neutral-500 hover:border-neutral-400 relative`}
+      className={`${SIZE[size]} rounded-lg border-3 border-neutral-500 hover:border-neutral-400`}
       style={{backgroundColor:`rgb(${r},${g},${b})`}}
       onClick={onClick}
     >
-      
+      {children}
     </button>
   )
 }

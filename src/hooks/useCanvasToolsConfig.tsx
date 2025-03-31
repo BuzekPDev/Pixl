@@ -95,7 +95,6 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
         })),
       swapActive: () => setColorOptions(o => ({ ...o, activePair: [o.activePair[1], o.activePair[0]] })),
       setActive: (color: RGBA, index: number) => {
-        console.debug("hi")
         setColorOptions(o => ({ ...o, activePair: o.activePair.map((c, i) => i === index ? color : c) }))
       }
     },

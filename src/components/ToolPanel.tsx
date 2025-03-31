@@ -22,41 +22,41 @@ export const ToolPanel = () => {
     >
       <ToolButton
         onClick={() => {
-          controller.selected.set("pencil")
+          controller.selected.set("pencil", "hold")
         }}
-        isSelected={controller.selected.key === 'pencil'}
+        isSelected={controller.selected.name === 'pencil'}
       >
         {icons.pencil}
       </ToolButton>
       <ToolButton
         onClick={() => {
-          controller.selected.set("eraser")
+          controller.selected.set("eraser", "hold")
         }}
-        isSelected={controller.selected.key === 'eraser'}
+        isSelected={controller.selected.name === 'eraser'}
       >
         {icons.eraser}
       </ToolButton>
       <ToolButton
         onClick={() => {
-          controller.selected.set("hand")
+          controller.selected.set("hand", "hold")
         }}
-        isSelected={controller.selected.key === 'hand'}
+        isSelected={controller.selected.name === 'hand'}
       >
         {icons.hand}
       </ToolButton>
       <ToolButton
         onClick={() => {
-          controller.selected.set("bucket")
+          controller.selected.set("bucket", "click")
         }}
-        isSelected={controller.selected.key === 'bucket'}
+        isSelected={controller.selected.name === 'bucket'}
       >
         {icons.bucket}
       </ToolButton>
       <ToolButton
         onClick={() => {
-          controller.selected.set("rect")
+          controller.selected.set("rect", "drag")
         }}
-        isSelected={controller.selected.key === 'rect'}
+        isSelected={controller.selected.name === 'rect'}
       >
         {icons.rect}
       </ToolButton>

@@ -13,8 +13,9 @@ export interface CanvasToolsConfig {
 }
 
 export interface SelectedTool {
-  key: ToolType;
-  set: (key: ToolType) => void
+  name: ToolName;
+  type: ToolType;
+  set: (name: ToolName, type: ToolType) => void
 }
 
 export interface ColorOptions extends ColorState {
@@ -24,7 +25,8 @@ export interface ColorOptions extends ColorState {
   setPalette: (color: RGBA, index: number) => void
 }
 
-export type ToolType = "pencil" | "eraser" | "hand" | "zoom" | "bucket" | "rect"
+export type ToolName = "pencil" | "eraser" | "hand" | "zoom" | "bucket" | "rect"
+export type ToolType = "click" | "hold" | "drag"
 
 export interface ColorState {
   palette: RGBA[];
@@ -49,7 +51,13 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       current: 0
     })
 
-  const [selectedTool, setSelectedTool] = useState<ToolType>("pencil")
+  const [selectedTool, setSelectedTool] = useState<{
+    name: ToolName,
+    type: ToolType
+  }>({
+    name: "pencil",
+    type: "hold"
+  })
 
   const [pencilToolOptions, setPencilToolOptions] =
     useState<ToolState>({
@@ -73,8 +81,9 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   return {
     selectedTool: {
-      key: selectedTool,
-      set: (key: ToolType) => setSelectedTool(key)
+      name: selectedTool.name,
+      type: selectedTool.type,
+      set: (name: ToolName, type: ToolType) => setSelectedTool({name, type})
     },
     colors: {
       ...colorOptions,
@@ -107,6 +116,6 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       setWidth: () => { }
     },
     zoom: {},
-    move: {}
+    hand: {}
   }
 }

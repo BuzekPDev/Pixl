@@ -639,6 +639,7 @@ export const CanvasProvider = ({
       }
       case "end": {
         updateBuffer(rectWalls, rgba)
+        frameManager.finishStep()
         break;
       }
     }
@@ -753,6 +754,7 @@ export const CanvasProvider = ({
       clearCanvas()
       drawCanvas()
       frameManager.updateFramePreview()
+      frameManager.updateAnimationPreview()
     })
   }
 
@@ -809,6 +811,7 @@ export const CanvasProvider = ({
       clearCanvas()
       drawCanvas()
       frameManager.updateFramePreview()
+      frameManager.updateAnimationPreview()
     })
   }
 

@@ -11,6 +11,7 @@ import { getRectWalls } from "../graphicsUtils/getRectWalls";
 import { FrameManagerApi, useCanvasFrameManager } from "../hooks/useCanvasFrameManager";
 import { CanvasActionManager } from "../classes/CanvasActionManager";
 import { Step } from "../classes/CanvasDrawStack";
+import { getPattern } from "../graphicsUtils/getPattern";
 
 export interface CanvasContext {
   setup: (
@@ -171,23 +172,10 @@ export const CanvasProvider = ({
 
     const { width, height } = ctx.canvas
     ctx.clearRect(0, 0, width, height)
-    const gridSize = 8
+    
+    const gridSize = 8;
 
-    const patternCanvas: HTMLCanvasElement = document.createElement('canvas');
-    patternCanvas.width = gridSize * 2; // 2x2 grid of squares
-    patternCanvas.height = gridSize * 2;
-
-    const patternCtx = patternCanvas.getContext('2d') as CanvasRenderingContext2D;
-    patternCtx.fillStyle = '#CCCCCC80'; // Light gray with 50% opacity
-    patternCtx.fillRect(0, 0, gridSize, gridSize);
-    patternCtx.fillStyle = '#80808080'; // Dark gray with 50% opacity
-    patternCtx.fillRect(gridSize, 0, gridSize, gridSize);
-    patternCtx.fillStyle = '#80808080'; // Dark gray with 50% opacity
-    patternCtx.fillRect(0, gridSize, gridSize, gridSize);
-    patternCtx.fillStyle = '#CCCCCC80'; // Light gray with 50% opacity
-    patternCtx.fillRect(gridSize, gridSize, gridSize, gridSize);
-
-    const pattern = ctx.createPattern(patternCanvas, 'repeat')
+    const pattern = ctx.createPattern(getPattern(gridSize), 'repeat')
     ctx.fillStyle = pattern as CanvasPattern;
     ctx.fillRect(
       Math.floor(x),
@@ -261,6 +249,7 @@ export const CanvasProvider = ({
     }
 
     frameManager.updateFramePreview()
+    frameManager.updateAnimationPreview()
   }
 
   const holdAction = (clientX: number, clientY: number) => {
@@ -373,8 +362,11 @@ export const CanvasProvider = ({
     }
   }
 
+  // temporary eslint ignore, clientX/Y will be used for line interpolation
+  // eslint-disable-next-line
   const endHoldAction = (clientX: number, clientY: number) => { 
     frameManager.updateFramePreview()
+    frameManager.updateAnimationPreview()
     frameManager.finishStep()
   }
 
@@ -409,6 +401,7 @@ export const CanvasProvider = ({
 
     actionManager.endDrag()
     frameManager.updateFramePreview()
+    frameManager.updateAnimationPreview()
   }
 
   const updateBuffer = (pixels: Array<Position>, rgba: RGBA) => {
@@ -865,10 +858,10 @@ export const CanvasProvider = ({
 
 
   // TODO
-  // canvas frame system (check out notes app for info)
-  // onion skin & animation
-  // frame preview (canvas-based)
-  // refactor the coordinate system it hurts to look at
+  // canvas frame system (check out notes app for info) - DONE
+  // onion skin & animation - TBD
+  // frame preview - DONE
+  // refactor the coordinate system it hurts to look at - TBD
 
   return (
     <canvasContext.Provider

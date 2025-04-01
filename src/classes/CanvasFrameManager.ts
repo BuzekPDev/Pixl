@@ -31,7 +31,7 @@ export class CanvasFrameManager {
     this.size = this.frames.length
 
     if (this.frameIndex >= frameIndex) {
-      this.frameIndex = Math.min(this.frameIndex - 1, this.size - 1)
+      this.frameIndex = Math.max(Math.min(this.frameIndex - 1, this.size - 1), 0)
     }
   }
 

@@ -18,6 +18,7 @@ export interface CanvasContext {
     canvasRef: RefObject<HTMLCanvasElement | null>,
     hoverOverlayCanvasRef: RefObject<HTMLCanvasElement | null>,
     transparencyGridCanvasRef: RefObject<HTMLCanvasElement | null>,
+    onionSkinCanvasRef: RefObject<HTMLCanvasElement | null>,
     viewport: Dimensions,
     size: Dimensions,
     position: Position,
@@ -77,7 +78,8 @@ export const CanvasProvider = ({
   // rendering context
   const canvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const hoverOverlayCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
-  const transparencyGridCanvaRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
+  const transparencyGridCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
+  const onionSkinCanvasRenderingContext = useRef<CanvasRenderingContext2D | null>(null)
   const offscreenBuffer = useOffscreenBuffer()
 
   const { selectedTool, colors } = canvasToolsConfig
@@ -134,6 +136,26 @@ export const CanvasProvider = ({
     canvasUpdate.current.willDraw = false
   } 
 
+  const drawOnionSkin = async () => {
+    if (!onionSkinCanvasRenderingContext.current) {
+      throw new Error("Onion skin canvas not ready")
+    }
+
+    const ctx = onionSkinCanvasRenderingContext.current
+    
+    const onionSkinFrames = frameManager.getOnionSkinFrames()
+    const count = onionSkinFrames.length
+
+    clearCanvas(ctx)
+
+    onionSkinFrames.forEach((frame, i) => {
+      const buffer = frame.buffer
+      const alphaValue = Math.floor(255/(count+1)) * (i+1) / 255
+      ctx.globalAlpha = alphaValue
+      drawCanvas({ctx, buffer})
+    })
+  }
+
   const clearCanvas = (ctx: CanvasRenderingContext2D | null = canvasRenderingContext.current) => {
     if (!ctx) {
       throw new Error("Set up the canvas first")
@@ -154,8 +176,9 @@ export const CanvasProvider = ({
     canvasUpdate.current.willClear = false
   }
 
+
   const drawTransparencyGrid = () => {
-    if (!transparencyGridCanvaRenderingContext.current) {
+    if (!transparencyGridCanvasRenderingContext.current) {
       throw new Error("Set up the canvas first")
     }
 
@@ -168,7 +191,7 @@ export const CanvasProvider = ({
 
     const { x, y } = position
 
-    const ctx = transparencyGridCanvaRenderingContext.current
+    const ctx = transparencyGridCanvasRenderingContext.current
 
     const { width, height } = ctx.canvas
     ctx.clearRect(0, 0, width, height)
@@ -873,6 +896,7 @@ export const CanvasProvider = ({
           canvasRef,
           hoverOverlayCanvasRef,
           transparencyGridCanvasRef,
+          onionSkinCanvasRef,
           viewport: Dimensions,
           size: Dimensions,
           position: Position,
@@ -896,9 +920,14 @@ export const CanvasProvider = ({
             hoverOverlayCanvasRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
           }
+          if (onionSkinCanvasRef.current) {
+            const ctx = onionSkinCanvasRef.current.getContext("2d") as CanvasRenderingContext2D
+            onionSkinCanvasRenderingContext.current = ctx
+            ctx.imageSmoothingEnabled = false
+          }
           if (transparencyGridCanvasRef.current) {
             const ctx = transparencyGridCanvasRef.current.getContext("2d") as CanvasRenderingContext2D
-            transparencyGridCanvaRenderingContext.current = ctx
+            transparencyGridCanvasRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
           }
           if (!frameManager.size()) {
@@ -943,6 +972,7 @@ export const CanvasProvider = ({
         canvasViewportConfig,
         drawCanvas,
         clearCanvas,
+        drawOnionSkin,
         log: () => console.debug(canvasRenderingContext)
       }}
     >

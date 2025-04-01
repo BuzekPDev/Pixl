@@ -1,8 +1,8 @@
-import { RefObject, use, useEffect, useMemo, useRef, useState } from "react"
+import { RefObject, useEffect, useMemo, useRef, useState } from "react"
 import { CanvasFrameManager, FrameData } from "../classes/CanvasFrameManager"
 import { CanvasDrawStack, Step } from "../classes/CanvasDrawStack"
 import { Dimensions } from "./useCanvasViewportConfig"
-import { AnimationManager, CanvasImageProcessor } from "../classes/AnimationManager";
+import { AnimationManager } from "../classes/AnimationManager";
 
 
 export interface FrameManagerApi {
@@ -10,6 +10,7 @@ export interface FrameManagerApi {
   getCurrentFrameIndex: () => number;
   setCurrentFrame: (index: number) => void;
   getFrame: (index: number) => FrameData | null;
+  getOnionSkinFrames: () => Array<FrameData>;
   getAllFrames: () => Array<FrameData>
   deleteFrame: (frameIndex: number) => void;
   changeResolution: (resolution: Dimensions) => Promise<void>;
@@ -76,6 +77,17 @@ export const useCanvasFrameManager = () => {
   const getFrame = (frameIndex: number) => frameManager.getFrame(frameIndex)
 
   const getAllFrames = () => frameManager.getAllFrames()
+
+  const getOnionSkinFrames = () => {
+    const currentFrameIndex = frameManager.getIndex()
+    // keep index in-bounds, max 3 layers deep
+    const deepestLayerIndex = Math.max(currentFrameIndex-3, 0)
+
+    return Array.from({
+        length: currentFrameIndex-deepestLayerIndex
+      }, (_,i) => deepestLayerIndex+i)
+      .map((frameIndex) => frameManager.getFrame(frameIndex))
+  }
 
   const getCurrentFrameIndex = () => frameManager.getIndex()
 
@@ -172,6 +184,7 @@ export const useCanvasFrameManager = () => {
     getCurrentFrame,
     getFrame,
     getAllFrames,
+    getOnionSkinFrames,
     getCurrentFrameIndex,
     setCurrentFrame,
     deleteFrame,

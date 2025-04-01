@@ -10,6 +10,7 @@ export const Canvas = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hoverOverlayCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const transparencyGridCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const onionSkinCanvasRef = useRef<HTMLCanvasElement | null>(null)
 
   const api = useCanvasApi()
   const isDrawing = useRef(false)
@@ -17,10 +18,12 @@ export const Canvas = ({
   const { selected } = api.controller
 
   useEffect(() => {
+    if (!width || !height) return
     api.setup(
       canvasRef, 
       hoverOverlayCanvasRef, 
       transparencyGridCanvasRef, 
+      onionSkinCanvasRef,
       {width: width, height: height},
       {width: width, height: height},
       {x: 0, y: 0},
@@ -28,6 +31,8 @@ export const Canvas = ({
     )
   
     api.controller.drawTransparencyGrid()
+
+    console.debug('effect')
 
   }, [width, height])
 
@@ -39,29 +44,37 @@ export const Canvas = ({
         switch (e.code) {
           case "KeyZ": 
             api.controller.undo()
+            e.preventDefault()
             break;
           case "KeyY":
             api.controller.redo()
+            e.preventDefault()
             break;
         }
       } else {
         switch (e.code) {
           case "KeyH": // h stands for hand I might change it later
-            selected.set("hand")
+            selected.set("hand", "hold")
             break;
           case "KeyP": 
-            selected.set("pencil")
+            selected.set("pencil", "hold")
             break;
           case "KeyE": 
-            selected.set("eraser")
+            selected.set("eraser", "hold")
             break;
+          case "KeyB": 
+            selected.set("bucket", "click")
+            break;
+          case "KeyR": 
+            selected.set("rect", "drag")
         }
       }
     } 
 
     const handlePointerUp = (e: PointerEvent) => {
       isDrawing.current = false
-      api.canvasDrawStack.commit()
+      api.frameManager.finishStep()
+      // console.debug(memorySizeOf(api.canvasDrawStack.stack))
       if (api.selectionTracker.isTracking) {
         api.selectionTracker.finish()
         api.controller.rect(e.clientX, e.clientY)
@@ -69,11 +82,11 @@ export const Canvas = ({
     }
 
     window.addEventListener("keydown", keyboardHandler)
-    window.addEventListener("pointerup", handlePointerUp)
+    // window.addEventListener("pointerup", handlePointerUp)
 
     return () => {
       window.removeEventListener("keydown", keyboardHandler)
-      window.removeEventListener("pointerup", handlePointerUp)
+      // window.removeEventListener("pointerup", handlePointerUp)
     }
   }, [api.controller])
 
@@ -86,29 +99,66 @@ export const Canvas = ({
         ref={transparencyGridCanvasRef}
       ></canvas>
       <canvas
+        className="touch-none w-full h-full z-20 absolute top-0 left-0 pointer-events-none [image-rendering:pixelated]"
+        width={width}
+        height={height} 
+        ref={onionSkinCanvasRef}
+      ></canvas>
+      <canvas
         className="touch-none w-full h-full [image-rendering:pixelated]"
         width={width}
         height={height} 
         ref={canvasRef}
+        onClick={(e) => {
+          if (api.canvasToolsConfig.selectedTool.type === "click") {
+            api.controller.clickAction(e.clientX, e.clientY)
+          }
+        }}
         onPointerDown={(e) => {
-          const x = e.clientX 
-          const y = e.clientY 
-          api.controller[selected.key](x, y)
+          if (api.canvasToolsConfig.selectedTool.type === "click") {
+            return
+          }
+          switch (api.canvasToolsConfig.selectedTool.type) {
+            case "hold":
+              api.controller.holdAction(e.clientX, e.clientY)
+              break;
+            case "drag":
+              api.controller.startDragAction(e.clientX, e.clientY)
+              break
+          }
           isDrawing.current = true
         }}
         onPointerUp={(e) => {
           isDrawing.current=false
-          api.canvasDrawStack.commit()
+          if (api.canvasToolsConfig.selectedTool.type === "click") {
+            return
+          }
+          switch (api.canvasToolsConfig.selectedTool.type) {
+            case "hold":
+              api.controller.endHoldAction(e.clientX, e.clientY)
+              break;
+            case "drag":
+              api.controller.endDragAction(e.clientX, e.clientY)
+              break
+          }
           api.resetMousePosition()
         }}
         onPointerMove={(e) => {
-          if (isDrawing.current) {
-            api.controller[selected.key](e.clientX, e.clientY)
+          if (api.canvasToolsConfig.selectedTool.type === "click") {
+            return
           }
-          if (api.selectionTracker.isTracking) {
-            //
-          } else {
-            api.controller.hoverMask(e.clientX, e.clientY)
+
+          api.controller.hoverMask(e.clientX, e.clientY)
+
+          if (isDrawing.current) {
+            switch (api.canvasToolsConfig.selectedTool.type) {
+              case "hold":
+                api.controller.holdAction(e.clientX, e.clientY)
+                break;
+              case "drag":
+                api.controller.updateDragAction(e.clientX, e.clientY)
+                break
+            }
           }
         }}
         onPointerOut={() => {

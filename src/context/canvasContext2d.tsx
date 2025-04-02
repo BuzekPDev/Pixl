@@ -12,6 +12,7 @@ import { FrameManagerApi, useCanvasFrameManager } from "../hooks/useCanvasFrameM
 import { CanvasActionManager } from "../classes/CanvasActionManager";
 import { Step } from "../classes/CanvasDrawStack";
 import { getPattern } from "../graphicsUtils/getPattern";
+import { drawLine } from "../graphicsUtils/drawLine";
 
 export interface CanvasContext {
   setup: (
@@ -150,7 +151,8 @@ export const CanvasProvider = ({
 
     onionSkinFrames.forEach((frame, i) => {
       const buffer = frame.buffer
-      const alphaValue = Math.floor(255/(count+1)) * (i+1) / 255
+      // decrease alpha based on distance from current frame
+      const alphaValue = (1/(count+1)) * (i+1)
       ctx.globalAlpha = alphaValue
       drawCanvas({ctx, buffer})
     })
@@ -175,7 +177,6 @@ export const CanvasProvider = ({
 
     canvasUpdate.current.willClear = false
   }
-
 
   const drawTransparencyGrid = () => {
     if (!transparencyGridCanvasRenderingContext.current) {
@@ -208,8 +209,6 @@ export const CanvasProvider = ({
     );
 
   }
-
-
 
   const resizeBuffers = () => {
     if (!offscreenBuffer.hoverOverlayBuffer) {
@@ -296,29 +295,39 @@ export const CanvasProvider = ({
       return
     }
 
-    actionManager.hold()
+    actionManager.hold(hoverCoordinates.x, hoverCoordinates.y)
+    
+    if (actionManager.willDraw) return
 
-    let updatedPixels: Array<Position> = [];
-    let rgba: RGBA = [0, 0, 0, 0]
+    actionManager.willDraw = true
 
-    switch (canvasToolsConfig.selectedTool.name) {
-      case "pencil":
-        [updatedPixels, rgba] = pencilTool(hoverCoordinates)
-        break;
-      case "eraser":
-        [updatedPixels, rgba] = eraserTool(hoverCoordinates)
-        break;
-      case "hand": 
-        handTool(clientX, clientY)
-        break;
-    }
+    requestAnimationFrame(() => {
+      let updatedPixels: Array<Position> = [];
+      let rgba: RGBA = [0, 0, 0, 0]
 
-    if (!updatedPixels.length) {
-      drawCanvas()
-      return
-    }
+      switch (canvasToolsConfig.selectedTool.name) {
+        case "pencil":
+          [updatedPixels, rgba] = pencilTool(hoverCoordinates)
+          break;
+        case "eraser":
+          [updatedPixels, rgba] = eraserTool(hoverCoordinates)
+          break;
+        case "hand": 
+          handTool(clientX, clientY)
+          break;
+      }
 
-    updateBuffer(updatedPixels, rgba)
+      actionManager.reposition()
+      actionManager.willDraw = false
+
+      // hand tool doesn't modify drawing area pixels so just
+      // so just redraw the canvas 
+      if (!updatedPixels.length) {
+        drawCanvas()
+        return
+      }
+      updateBuffer(updatedPixels, rgba)
+      })
   }
 
   const startDragAction = (clientX: number, clientY: number) => {
@@ -385,12 +394,14 @@ export const CanvasProvider = ({
     }
   }
 
-  // temporary eslint ignore, clientX/Y will be used for line interpolation
+  // might find a use for them eventually
   // eslint-disable-next-line
   const endHoldAction = (clientX: number, clientY: number) => { 
+    
     frameManager.updateFramePreview()
     frameManager.updateAnimationPreview()
     frameManager.finishStep()
+    actionManager.release()
   }
 
   const endDragAction = (clientX: number, clientY: number) => {
@@ -413,9 +424,6 @@ export const CanvasProvider = ({
     if (hoverCoordinates.x === null || hoverCoordinates.y === null) {
       return
     }
-
-    // let updatedPixels: Array<Position> = [];
-    // let rgba: RGBA = [0, 0, 0, 0]
 
     switch (canvasToolsConfig.selectedTool.name) {
       case "rect":
@@ -544,49 +552,25 @@ export const CanvasProvider = ({
   // add Bresenham's Line Algorithm/interpolation
   const pencilTool = (hoverCoordinates: HoverCoordinates): [Array<Position>, RGBA] => {
 
-    const { x, y, toolSizeX, toolSizeY } = hoverCoordinates
-    const { resolution } = canvasViewportConfig.dimensions.ref.current
-
-    const surfaceArea = toolSizeX * toolSizeY
+    const { toolSizeX } = hoverCoordinates
     const rgba = canvasToolsConfig.colors.activePair[0]
 
-    const updatedPixels = []
+    const {x1, y1, x2, y2} = actionManager.getCoordinates()
 
-    for (let i = 0; i < surfaceArea; i++) {
-      const pixelX = x + (i % toolSizeX)
-      const pixelY = y + Math.floor(i / toolSizeY)
-
-      // out of bounds
-      if (pixelX > resolution.width - 1 || pixelY > resolution.height - 1) {
-        continue
-      }
-
-      updatedPixels.push({ x: pixelX, y: pixelY })
-    }
+    const updatedPixels = drawLine(x1, y1, x2, y2, toolSizeX)
 
     return [updatedPixels, rgba]
   }
 
   const eraserTool = (hoverCoordinates: HoverCoordinates): [Array<Position>, RGBA] => {
 
-    const { x, y, toolSizeX, toolSizeY } = hoverCoordinates
-    const { resolution } = canvasViewportConfig.dimensions.ref.current
+    const { toolSizeX } = hoverCoordinates
 
-    const surfaceArea = toolSizeX * toolSizeY
+    const {x1, y1, x2, y2} = actionManager.getCoordinates()
     const rgba: RGBA = [0, 0, 0, 0]
 
-    const updatedPixels = [];
+    const updatedPixels = drawLine(x1, y1, x2, y2, toolSizeX);
 
-    for (let i = 0; i < surfaceArea; i++) {
-      const pixelX = x + (i % toolSizeX)
-      const pixelY = y + Math.floor(i / toolSizeY)
-
-      if (pixelX > resolution.width - 1 || pixelY > resolution.height - 1) {
-        continue
-      }
-
-      updatedPixels.push({ x: pixelX, y: pixelY })
-    }
     return [updatedPixels, rgba]
   }
 

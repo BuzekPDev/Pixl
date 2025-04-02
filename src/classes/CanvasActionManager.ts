@@ -6,15 +6,27 @@ export class CanvasActionManager {
   isHolding: boolean = false;
   isDragging: boolean = false;
 
-  startPosition: Position = {x: 0, y: 0}
-  endPosition: Position = {x: 0, y: 0}
+  willDraw: boolean = false;
+
+  startPosition: Position = {x: -1, y: -1}
+  endPosition: Position = {x: -1, y: -1}
   
   click () {
     this.clicked = true;
   }
 
-  hold () {
-    this.isHolding = true
+  hold (x: number, y: number) {
+    if (!this.isHolding) {
+      this.startPosition.x = x;
+      this.startPosition.y = y;
+      this.isHolding = true;
+    }
+    this.endPosition.x = x;
+    this.endPosition.y = y;
+  }
+
+  reposition () {
+    this.startPosition = {...this.endPosition}
   }
 
   release () {
@@ -45,6 +57,20 @@ export class CanvasActionManager {
       y1: Math.min(this.startPosition.y, this.endPosition.y),
       x2: Math.max(this.startPosition.x, this.endPosition.x),
       y2: Math.max(this.startPosition.y, this.endPosition.y),
+    }
+  }
+
+  hasMoved () {
+    return this.startPosition.x !== this.endPosition.x || this.startPosition.y !== this.endPosition.y
+  }
+
+  // returns raw coordinates 
+  getCoordinates () {
+    return {
+      x1: this.startPosition.x,
+      y1: this.startPosition.y,
+      x2: this.endPosition.x,
+      y2: this.endPosition.y
     }
   }
 }

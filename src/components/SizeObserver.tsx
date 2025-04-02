@@ -1,5 +1,6 @@
 import { Children, cloneElement, isValidElement, PropsWithChildren, useLayoutEffect, useRef, useState } from "react"
 import { CanvasProps } from "./Canvas"
+import { debounce } from "../utils/debounce"
 
 export const SizeObserver = ({ children }: PropsWithChildren) => {
 
@@ -14,29 +15,27 @@ export const SizeObserver = ({ children }: PropsWithChildren) => {
     const { width, height } = measureRef.current.getBoundingClientRect()
     setDimesions({ width, height })
 
-    const resizeHandler = () => {
-      if (!measureRef.current) return
-      const {width, height} = measureRef.current.getBoundingClientRect()
-      setDimesions({
-        width,height
-      })
+    const resize = debounce((width, height) => setDimesions({width, height}), 100)
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width !== dimensions?.width || height !== dimensions.height) {
+          resize(width, height)
+        }
+      }
+    })
+    observer.observe(measureRef.current)
+
+    return () => {
+      observer.disconnect()
     }
-
-    window.addEventListener("resize", resizeHandler)
-
-    return () => window.removeEventListener("resize", resizeHandler)
   }, [])
 
 
   return (
     <div
       className="w-full h-full"
-      onResizeCapture={(e) => {
-        const { width, height } = e.currentTarget.getBoundingClientRect()
-        setDimesions({
-          width,height
-        })
-      }}
       ref={measureRef}
     >
       {dimensions ?

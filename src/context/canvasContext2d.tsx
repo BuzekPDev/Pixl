@@ -25,21 +25,21 @@ export interface CanvasContext {
     position: Position,
     resolution: Dimensions
   ) => void,
-  changeDimensions:
+  changeDimensions: // this one's getting SO refactored
   <K extends keyof CanvasDimensions>
     (dims: Record<K, CanvasDimensions[K]>) => void;
-  controller: CanvasController;
+
+
+  toolsController: ToolsController;
+  canvasController: CanvasController;
+
   resetMousePosition: () => void
   frameManager: FrameManagerApi;
   canvasToolsConfig: CanvasToolsConfig;
   canvasViewportConfig: CanvasViewportConfig;
-  drawCanvas: () => void;
-  clearCanvas: () => void;
-  log: () => void;
 }
 
-export interface CanvasController {
-  drawTransparencyGrid: () => void;
+export interface ToolsController {
   
   clickAction: (clientX: number, clientY: number) => void;
   holdAction: (clientX: number, clientY: number) => void;
@@ -48,12 +48,30 @@ export interface CanvasController {
   endHoldAction: (clientX: number, clientY: number) => void;
   endDragAction: (clientX: number, clientY: number) => void;
 
-  hoverMask: (clientX: number, clientY: number) => void;
-  clearHoverMask: () => void;
   undo: () => void;
   redo: () => void;
   zoom: (deltaY: number) => void
   selected: SelectedTool
+}
+
+export interface CanvasController {
+  drawCanvas: () => void;
+  clearCanvas: () => void;
+  drawTransparencyGrid: () => void;
+  onionSkin: OnionSkinConfig;
+  hoverMask: HoverMaskController;
+}
+
+export interface OnionSkinConfig {
+  isEnabled: boolean;
+  toggle: () => void;
+  draw: () => void;
+  clear: () => void;
+}
+
+export interface HoverMaskController {
+  draw: (clientX: number, clientY: number) => void;
+  clear: () => void;
 }
 
 const canvasContext = createContext<CanvasContext | null>(null)
@@ -66,6 +84,9 @@ export const CanvasProvider = ({
 
   // only needs to cause a rerender
   const [, setIsReady] = useState(false)
+
+  
+  const [onionSkin, setOnionSkin] = useState(false) 
 
   // main tools 
   const canvasToolsConfig = useCanvasToolsConfig()
@@ -147,8 +168,6 @@ export const CanvasProvider = ({
     const onionSkinFrames = frameManager.getOnionSkinFrames()
     const count = onionSkinFrames.length
 
-    clearCanvas(ctx)
-
     onionSkinFrames.forEach((frame, i) => {
       const buffer = frame.buffer
       // decrease alpha based on distance from current frame
@@ -176,6 +195,16 @@ export const CanvasProvider = ({
     )
 
     canvasUpdate.current.willClear = false
+  }
+
+  const clearOnionSkin = () => {
+    if (!onionSkinCanvasRenderingContext.current) {
+      throw new Error("Onion skin canvas not ready")
+    }
+
+    const ctx = onionSkinCanvasRenderingContext.current
+    
+    clearCanvas(ctx)
   }
 
   const drawTransparencyGrid = () => {
@@ -217,6 +246,10 @@ export const CanvasProvider = ({
 
     if (!offscreenBuffer.transparencyGridBuffer) {
       throw new Error("Transparency grid buffer not ready")
+    }
+
+    if (!onionSkinCanvasRenderingContext.current) {
+      throw new Error("Onion skin canvas not ready")
     }
 
     const {
@@ -320,7 +353,7 @@ export const CanvasProvider = ({
       actionManager.reposition()
       actionManager.willDraw = false
 
-      // hand tool doesn't modify drawing area pixels so just
+      // hand tool doesn't modify drawing area pixels
       // so just redraw the canvas 
       if (!updatedPixels.length) {
         drawCanvas()
@@ -397,9 +430,10 @@ export const CanvasProvider = ({
   // might find a use for them eventually
   // eslint-disable-next-line
   const endHoldAction = (clientX: number, clientY: number) => { 
-    
-    frameManager.updateFramePreview()
-    frameManager.updateAnimationPreview()
+    if (frameManager.willAddToStack()) {
+      frameManager.updateFramePreview()
+      frameManager.updateAnimationPreview()
+    }
     frameManager.finishStep()
     actionManager.release()
   }
@@ -583,8 +617,6 @@ export const CanvasProvider = ({
     const { left, top } = canvasRenderingContext.current.canvas.getBoundingClientRect()
     const { position, zoom } = canvasViewportConfig.dimensions.ref.current
 
-    if (canvasUpdate.current.willClear || canvasUpdate.current.willDraw) return
-
     if (!mouseCoordinates.current) {
       mouseCoordinates.current = {
         prevClientX: clientX - left,
@@ -604,11 +636,9 @@ export const CanvasProvider = ({
       prevClientY: clientY - top
     }
 
-    canvasUpdate.current.willClear = true
-    canvasUpdate.current.willDraw = true
-
     requestAnimationFrame(() => {
       clearCanvas()
+      clearOnionSkin()
       canvasViewportConfig.dimensions.set({
         position: {
           x: newX,
@@ -617,6 +647,9 @@ export const CanvasProvider = ({
       })
       drawCanvas()
       drawTransparencyGrid()
+      if (onionSkin) {
+        drawOnionSkin()
+      }
     })
 
     return
@@ -684,6 +717,7 @@ export const CanvasProvider = ({
     } = getHoverCoordinates(clientX, clientY, position, size, scale, ctx, toolSize)
 
     if (x === null || y === null) {
+      actionManager.release()
       return
     }
 
@@ -854,6 +888,7 @@ export const CanvasProvider = ({
       }
 
       clearCanvas()
+      clearOnionSkin()
       canvasViewportConfig.dimensions.set({
         position: {
           x: anchorX + (position.x - anchorX) * scaleFactor,
@@ -863,14 +898,28 @@ export const CanvasProvider = ({
       })
       drawCanvas()
       drawTransparencyGrid()
+
+      if (onionSkin) {
+        drawOnionSkin()
+      }
     })
   }
 
+  const toggleOnionSkin = () => {
+    if (onionSkin) {
+      setOnionSkin(false)
+      clearOnionSkin()
+    } else {
+      setOnionSkin(true)
+      drawOnionSkin()
+    }
+  }
 
   // TODO
-  // canvas frame system (check out notes app for info) - DONE
-  // onion skin & animation - TBD
+  // canvas frame system - DONE
+  // onion skin & animation - DONE
   // frame preview - DONE
+  // animation preview refactor
   // refactor the coordinate system it hurts to look at - TBD
 
   return (
@@ -917,14 +966,35 @@ export const CanvasProvider = ({
           if (!frameManager.size()) {
             frameManager.changeResolution(resolution)
             frameManager.addFrame()
+            resizeBuffers()
           }
           setIsReady(true)
-          resizeBuffers()
           canvasViewportConfig.dimensions.recenter()
+          drawCanvas()
         },
-        controller: {
-          drawTransparencyGrid,
+        changeDimensions: (dims) => {
+          clearCanvas()
+          clearOnionSkin()
+          canvasViewportConfig.dimensions.set(dims)
 
+          if ((dims as CanvasDimensions)?.resolution) {
+            resizeBuffers()
+            drawCanvas()
+            if (onionSkin) {
+              drawOnionSkin()
+            }
+          }
+        },
+        resetMousePosition: () => {
+          mouseCoordinates.current = null
+          actionManager.release()
+        },
+        frameManager,
+        canvasToolsConfig,
+        canvasViewportConfig,
+
+        // refactored values
+        toolsController: {
           clickAction,
           holdAction,
           startDragAction,
@@ -932,32 +1002,26 @@ export const CanvasProvider = ({
           endHoldAction,
           endDragAction,
 
-          hoverMask,
-          clearHoverMask,
           undo,
           redo,
           zoom,
           selected: selectedTool
         },
-        changeDimensions: (dims) => {
-          clearCanvas()
-          canvasViewportConfig.dimensions.set(dims)
-
-          if ((dims as CanvasDimensions)?.resolution) {
-            resizeBuffers()
-            drawCanvas()
+        canvasController: {
+          drawCanvas,
+          clearCanvas,
+          drawTransparencyGrid,
+          hoverMask: {
+            draw: hoverMask,
+            clear: clearHoverMask,
+          },
+          onionSkin: {
+            isEnabled: onionSkin,
+            toggle: toggleOnionSkin,
+            draw: drawOnionSkin,
+            clear: clearOnionSkin
           }
-        },
-        resetMousePosition: () => {
-          mouseCoordinates.current = null
-        },
-        frameManager,
-        canvasToolsConfig,
-        canvasViewportConfig,
-        drawCanvas,
-        clearCanvas,
-        drawOnionSkin,
-        log: () => console.debug(canvasRenderingContext)
+        }
       }}
     >
       {children}

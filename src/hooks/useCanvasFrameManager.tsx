@@ -145,11 +145,12 @@ export const useCanvasFrameManager = () => {
       const image = animationManager.getCurrentAnimationFrame()
       animationPreviewRef.current.style.backgroundImage = `url(${image})`
       animationManager.tick()
-      // needs to tick
-      // get the image of the current tick
-      // assign image to the preview div
     }, 1000/speed)
     animationManager.setIntervalId(intervalId)
+  }
+
+  const pauseAnimationPreview = () => {
+    animationManager.pauseAnimation()
   }
 
   const updateAnimationPreview = async () => {
@@ -162,8 +163,7 @@ export const useCanvasFrameManager = () => {
 
     if (!frame) return
 
-    const objectURL = await animationManager.updateObjectURL(frame, index)
-    animationPreviewRef.current.style.backgroundImage = `url(${objectURL})`
+    await animationManager.updateObjectURL(frame, index)
   } 
 
   const changeAnimationSpeed = (speed: number) => {
@@ -179,6 +179,8 @@ export const useCanvasFrameManager = () => {
   const redo = () => {
     return metaStack.redo()
   }
+
+  const willAddToStack = () => metaStack.isStepPopulated()
 
   return {
     getCurrentFrame,
@@ -199,6 +201,9 @@ export const useCanvasFrameManager = () => {
     currentFrameRef,
     animationPreviewRef,
     changeAnimationSpeed,
+    startAnimationPreview,
+    pauseAnimationPreview,
+    willAddToStack,
 
     downloadFrameAsImage,
 

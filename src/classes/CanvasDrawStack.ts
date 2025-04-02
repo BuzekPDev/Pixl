@@ -38,6 +38,10 @@ export class CanvasDrawStack {
     this.step = []
   }
 
+  isStepPopulated () {
+    return this.step.length > 0
+  }
+
   setCurrentStack (metaStackIndex: number) {
     this.metaStackIndex = metaStackIndex
   } 

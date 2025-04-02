@@ -65,6 +65,12 @@ export class AnimationManager {
     this.intervalId = id
   }
 
+  pauseAnimation () {
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId)
+    }
+  }
+
 
   // PLACEHOLDER NAMES
 

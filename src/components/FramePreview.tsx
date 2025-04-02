@@ -4,16 +4,19 @@ import { AnimationPreview } from "./AnimationPreview"
 
 export const FramePreview = () => {
 
-  const { frameManager, drawCanvas, clearCanvas, drawOnionSkin, canvasViewportConfig } = useCanvasApi()
+  const { frameManager, canvasController, canvasViewportConfig } = useCanvasApi()
   const { resolution } = canvasViewportConfig.dimensions.ref.current
 
   const aspectRatio = useMemo(() => resolution.width / resolution.height, [resolution])
 
   const handleNewFrame = () => {
     frameManager.addFrame()
-    drawCanvas()
-    clearCanvas()
-    drawOnionSkin()
+    canvasController.drawCanvas()
+    canvasController.clearCanvas()
+    if (canvasController.onionSkin.isEnabled) {
+      canvasController.onionSkin.clear()
+      canvasController.onionSkin.draw()
+    }
   }
 
   return (
@@ -21,10 +24,13 @@ export const FramePreview = () => {
       <AnimationPreview></AnimationPreview>
       <label htmlFor="fps">
         framerate
-        <input type="range" name="fps" min={1} max={60} defaultValue={12} onChange={(e) => {
+        <input type="range" name="fps" min={1} max={24} defaultValue={12} onChange={(e) => {
           frameManager.changeAnimationSpeed(parseInt(e.target.value))
         }} />
-      </label>
+          <button onClick={() => frameManager.startAnimationPreview()}>start</button>
+          <button onClick={() => frameManager.pauseAnimationPreview()}>pause</button>
+          <button onClick={() => canvasController.onionSkin.toggle()}>onion skin {canvasController.onionSkin.isEnabled.toString()}</button>
+        </label>
       <div className="flex flex-col shrink h-full overflow-y-scroll">
         <button onClick={handleNewFrame}>add new</button>
         <div className="flex flex-col gap-4 w-full h-full">
@@ -39,9 +45,12 @@ export const FramePreview = () => {
                 className={`flex flex-col justify-center items-center ${frameIndex === i ? "border-2 border-red-500" : ""}`}
                 onClick={() => {
                   frameManager.setCurrentFrame(i)
-                  clearCanvas()
-                  drawCanvas()
-                  drawOnionSkin()
+                  canvasController.clearCanvas()
+                  canvasController.drawCanvas()
+                  if (canvasController.onionSkin.isEnabled) {
+                    canvasController.onionSkin.clear()
+                    canvasController.onionSkin.draw()
+                  }
                 }}>
                 <span>frame {i} <button onClick={(e) => { e.stopPropagation(); frameManager.deleteFrame(i) }}>del</button></span>
                 <canvas

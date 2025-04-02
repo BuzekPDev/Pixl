@@ -4,8 +4,6 @@ import { useCanvasApi } from "../context/canvasContext2d";
 export const Canvas = ({
   width,
   height,
-  canvasWidth,
-  canvasHeight,
 }: CanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const hoverOverlayCanvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -15,7 +13,6 @@ export const Canvas = ({
   const api = useCanvasApi()
   const isDrawing = useRef(false)
 
-  const { selected } = api.controller
 
   useEffect(() => {
     if (!width || !height) return
@@ -30,30 +27,27 @@ export const Canvas = ({
       {width: 64, height: 64}
     )
   
-    api.controller.drawTransparencyGrid()
-
-    console.debug('effect')
+    api.canvasController.drawTransparencyGrid()
 
   }, [width, height])
 
   useEffect(() => {
-
     const keyboardHandler = (e: KeyboardEvent) => {
-      const {selected} = api.controller
+      const {selected, undo, redo} = api.toolsController
       if (e.ctrlKey) {
         switch (e.code) {
           case "KeyZ": 
-            api.controller.undo()
+            undo()
             e.preventDefault()
             break;
           case "KeyY":
-            api.controller.redo()
+            redo()
             e.preventDefault()
             break;
         }
       } else {
         switch (e.code) {
-          case "KeyH": // h stands for hand I might change it later
+          case "KeyH":
             selected.set("hand", "hold")
             break;
           case "KeyP": 
@@ -72,23 +66,33 @@ export const Canvas = ({
     } 
 
     const handlePointerUp = (e: PointerEvent) => {
-      isDrawing.current = false
-      api.frameManager.finishStep()
-      // console.debug(memorySizeOf(api.canvasDrawStack.stack))
-      if (api.selectionTracker.isTracking) {
-        api.selectionTracker.finish()
-        api.controller.rect(e.clientX, e.clientY)
-      }
+      // should delay just long enough for pointerMove to finish
+      requestAnimationFrame(() => {
+        isDrawing.current=false
+        const { type } = api.canvasToolsConfig.selectedTool
+        if (type === "click") {
+          return
+        }
+        switch (type) {
+          case "hold":
+            api.toolsController.endHoldAction(e.clientX, e.clientY)
+            break;
+          case "drag":
+            api.toolsController.endDragAction(e.clientX, e.clientY)
+            break
+        }
+        api.resetMousePosition()
+      })
     }
 
     window.addEventListener("keydown", keyboardHandler)
-    // window.addEventListener("pointerup", handlePointerUp)
+    window.addEventListener("pointerup", handlePointerUp)
 
     return () => {
       window.removeEventListener("keydown", keyboardHandler)
-      // window.removeEventListener("pointerup", handlePointerUp)
+      window.removeEventListener("pointerup", handlePointerUp)
     }
-  }, [api.controller])
+  }, [api.toolsController])
 
   return (
     <div className="relative">
@@ -111,7 +115,7 @@ export const Canvas = ({
         ref={canvasRef}
         onClick={(e) => {
           if (api.canvasToolsConfig.selectedTool.type === "click") {
-            api.controller.clickAction(e.clientX, e.clientY)
+            api.toolsController.clickAction(e.clientX, e.clientY)
           }
         }}
         onPointerDown={(e) => {
@@ -120,54 +124,39 @@ export const Canvas = ({
           }
           switch (api.canvasToolsConfig.selectedTool.type) {
             case "hold":
-              api.controller.holdAction(e.clientX, e.clientY)
+              api.toolsController.holdAction(e.clientX, e.clientY)
               break;
             case "drag":
-              api.controller.startDragAction(e.clientX, e.clientY)
+              api.toolsController.startDragAction(e.clientX, e.clientY)
               break
           }
           isDrawing.current = true
-        }}
-        onPointerUp={(e) => {
-          isDrawing.current=false
-          if (api.canvasToolsConfig.selectedTool.type === "click") {
-            return
-          }
-          switch (api.canvasToolsConfig.selectedTool.type) {
-            case "hold":
-              api.controller.endHoldAction(e.clientX, e.clientY)
-              break;
-            case "drag":
-              api.controller.endDragAction(e.clientX, e.clientY)
-              break
-          }
-          api.resetMousePosition()
         }}
         onPointerMove={(e) => {
           if (api.canvasToolsConfig.selectedTool.type === "click") {
             return
           }
 
-          api.controller.hoverMask(e.clientX, e.clientY)
+          api.canvasController.hoverMask.draw(e.clientX, e.clientY)
 
           if (isDrawing.current) {
             switch (api.canvasToolsConfig.selectedTool.type) {
               case "hold":
-                api.controller.holdAction(e.clientX, e.clientY)
+                api.toolsController.holdAction(e.clientX, e.clientY)
                 break;
               case "drag":
-                api.controller.updateDragAction(e.clientX, e.clientY)
+                api.toolsController.updateDragAction(e.clientX, e.clientY)
                 break
             }
           }
         }}
         onPointerOut={() => {
-          api.controller.clearHoverMask()
+          api.canvasController.hoverMask.clear()
           api.resetMousePosition()
         }}
         onWheel={(e) => {
           if (!e.ctrlKey) {
-            api.controller.zoom(e.deltaY)
+            api.toolsController.zoom(e.deltaY)
           } 
         }}
       >

@@ -943,13 +943,6 @@ export const CanvasProvider = ({
     viewportManager.changeTrueSize(trueSize)
   }
 
-  // TODO
-  // canvas frame system - DONE
-  // onion skin & animation - DONE
-  // frame preview - DONE
-  // animation preview refactor
-  // refactor the coordinate system it hurts to look at - DONE
-
   return (
     <canvasContext.Provider
       value={{

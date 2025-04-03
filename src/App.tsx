@@ -5,6 +5,7 @@ import { SizeObserver } from './components/SizeObserver'
 import { Header } from './components/Header'
 import { ToolPanel } from './components/ToolPanel'
 import { SettingsPanel } from './components/SettingsPanel'
+import { FramePreview } from './components/FramePreview'
 
 const api = "http://localhost:3000/"
 
@@ -70,6 +71,7 @@ function App() {
           />
         </SizeObserver>
       </main>
+      <FramePreview />
       {/* <SettingsPanel /> */}
       {/* <div>
         <label htmlFor="width">width</label>

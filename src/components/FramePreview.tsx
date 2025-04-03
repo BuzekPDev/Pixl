@@ -4,8 +4,8 @@ import { AnimationPreview } from "./AnimationPreview"
 
 export const FramePreview = () => {
 
-  const { frameManager, canvasController, canvasViewportConfig } = useCanvasApi()
-  const { resolution } = canvasViewportConfig.dimensions.ref.current
+  const { frameManager, canvasController, viewportManager } = useCanvasApi()
+  const { resolution } = viewportManager.getDimensions()
 
   const aspectRatio = useMemo(() => resolution.width / resolution.height, [resolution])
 
@@ -42,7 +42,7 @@ export const FramePreview = () => {
 
             return (
               <button
-                className={`flex flex-col justify-center items-center ${frameIndex === i ? "border-2 border-red-500" : ""}`}
+                className={`flex flex-col justify-center w-full max-w-full items-center ${frameIndex === i ? "border-2 border-red-500" : ""} overflow-hidden`}
                 onClick={() => {
                   frameManager.setCurrentFrame(i)
                   canvasController.clearCanvas()
@@ -54,15 +54,16 @@ export const FramePreview = () => {
                 }}>
                 <span>frame {i} <button onClick={(e) => { e.stopPropagation(); frameManager.deleteFrame(i) }}>del</button></span>
                 <canvas
-                  width={Math.round(64 * aspectRatio)}
-                  height={64}
+                  width={64}
+                  height={64/aspectRatio}
+                  style={{aspectRatio}}
                   key={frameData.id} ref={(ref) => {
                     if (!ref) return
                     const ctx = ref?.getContext("2d")
 
                     if (ctx) {
-                      ctx.clearRect(0, 0, Math.round(64 * aspectRatio), 64)
-                      ctx.drawImage(frameData.buffer.canvas, 0, 0, resolution.width, resolution.height, 0, 0, Math.round(64 * aspectRatio), 64)
+                      ctx.clearRect(0, 0, 64, 64/aspectRatio)
+                      ctx.drawImage(frameData.buffer.canvas, 0, 0, resolution.width, resolution.height, 0, 0, 64, 64/aspectRatio)
 
                       // only need to update the currently selected frame when drawing
                       if (i === frameIndex) {

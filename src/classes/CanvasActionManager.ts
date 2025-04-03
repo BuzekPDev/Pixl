@@ -1,4 +1,4 @@
-import { Position } from "../hooks/useCanvasViewportConfig";
+import { Position } from "../types/types";
 
 export class CanvasActionManager {
 
@@ -10,6 +10,8 @@ export class CanvasActionManager {
 
   startPosition: Position = {x: -1, y: -1}
   endPosition: Position = {x: -1, y: -1}
+
+  mouseCoordinates: Position = {x: -1, y: -1}
   
   click () {
     this.clicked = true;

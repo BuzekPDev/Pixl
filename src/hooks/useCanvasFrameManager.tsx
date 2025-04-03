@@ -1,8 +1,8 @@
 import { RefObject, useEffect, useMemo, useRef, useState } from "react"
 import { CanvasFrameManager, FrameData } from "../classes/CanvasFrameManager"
 import { CanvasDrawStack, Step } from "../classes/CanvasDrawStack"
-import { Dimensions } from "./useCanvasViewportConfig"
 import { AnimationManager } from "../classes/AnimationManager";
+import { Dimensions } from "../types/types";
 
 
 export interface FrameManagerApi {
@@ -24,6 +24,9 @@ export interface FrameManagerApi {
   currentFrameRef: RefObject<HTMLCanvasElement | null>;
   animationPreviewRef: RefObject<HTMLDivElement | null>;
   changeAnimationSpeed: (speed: number) => void
+  willAddToStack: () => boolean;
+  startAnimationPreview: () => void;
+  pauseAnimationPreview: () => void;
 
   size: () => number
 }
@@ -46,6 +49,7 @@ export const useCanvasFrameManager = () => {
   useEffect(() => {
     startAnimationPreview()
   }, [])
+
   // temporary Ill do it in a better way lmao
   // first I need to solve how to play and update the animation preview properly
   const downloadFrameAsImage = (imageType: "jpg" | "jpeg" | "png") => {
@@ -134,7 +138,7 @@ export const useCanvasFrameManager = () => {
 
     if (ctx && buffer) {
       ctx.clearRect(0, 0, width, height)
-      ctx.drawImage(buffer.canvas, 0, 0, width, height, 0, 0, 64 * aspectRatio, 64)
+      ctx.drawImage(buffer.canvas, 0, 0, width, height, 0, 0, 64, 64/aspectRatio)
     }
   }
 

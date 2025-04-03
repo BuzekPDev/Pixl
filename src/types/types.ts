@@ -1,3 +1,9 @@
-export type Timestamp = number
+export interface Dimensions {
+  width: number;
+  height: number;
+}
 
-export type ShaderSource = string
+export interface Position {
+  x: number,
+  y: number
+}

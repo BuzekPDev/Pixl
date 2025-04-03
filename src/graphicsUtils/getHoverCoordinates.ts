@@ -1,4 +1,4 @@
-import { Dimensions, Position } from "../hooks/useCanvasViewportConfig"
+import { Dimensions, Position } from "../types/types"
 
 export const getHoverCoordinates = (
   clientX: number, 
@@ -6,6 +6,7 @@ export const getHoverCoordinates = (
   position: Position,
   size: Dimensions,
   scale: number,
+  zoom: number,
   ctx: CanvasRenderingContext2D, 
   toolSize: ToolSize
 ) => {
@@ -19,8 +20,8 @@ export const getHoverCoordinates = (
   // terminate early if outside of drawing area
   if (localX < 0 || 
     localY < 0 || 
-    localX > (size.width) || 
-    localY > (size.height)
+    localX > (size.width * zoom) || 
+    localY > (size.height * zoom)
   ) {
     console.debug("OOB")
     return {
@@ -31,10 +32,10 @@ export const getHoverCoordinates = (
     }
   }
 
-  const relativeClientX = Math.floor(((localX) / scale))
+  const relativeClientX = Math.floor(((localX) / scale) / zoom)
   const x = Math.floor((relativeClientX)-Math.floor(toolSize/2)) 
 
-  const relativeClientY = Math.floor(((localY) / scale))
+  const relativeClientY = Math.floor(((localY) / scale) / zoom)
   const y = Math.floor((relativeClientY)-Math.floor(toolSize/2))
   
   return {

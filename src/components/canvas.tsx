@@ -16,16 +16,14 @@ export const Canvas = ({
 
   useEffect(() => {
     if (!width || !height) return
-    api.setup(
+    api.setup({
       canvasRef, 
       hoverOverlayCanvasRef, 
       transparencyGridCanvasRef, 
       onionSkinCanvasRef,
-      {width: width, height: height},
-      {width: width, height: height},
-      {x: 0, y: 0},
-      {width: 64, height: 64}
-    )
+      trueSize: {width: width, height: height},
+      resolution: {width: 64, height: 64}
+    })
   
     api.canvasController.drawTransparencyGrid()
 
@@ -81,7 +79,7 @@ export const Canvas = ({
             api.toolsController.endDragAction(e.clientX, e.clientY)
             break
         }
-        api.resetMousePosition()
+        api.toolsController.resetMousePosition()
       })
     }
 
@@ -152,7 +150,7 @@ export const Canvas = ({
         }}
         onPointerOut={() => {
           api.canvasController.hoverMask.clear()
-          api.resetMousePosition()
+          api.toolsController.resetMousePosition()
         }}
         onWheel={(e) => {
           if (!e.ctrlKey) {

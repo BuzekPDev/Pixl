@@ -9,29 +9,26 @@ export const Header = () => {
     width: 64,
     height: 64
   })
-  const { canvasViewportConfig, changeDimensions } = useCanvasApi()
-  const api = useCanvasApi()
+  const { viewportManager, canvasController } = useCanvasApi()
+  const { changeResolution } = canvasController
+
   const widthResizeDebounce = useCallback(debounce(
     (num) => {
-  const { resolution } = canvasViewportConfig.dimensions.ref.current
-      changeDimensions({
-        resolution: {
-          width: num,
-          height: resolution.height
-        }
+      const { resolution } = viewportManager.getDimensions()
+      changeResolution({
+        width: num,
+        height: resolution.height
       })
     }, 500)
     , [])
+
   const heightResizeDebounce = useCallback(debounce(
     (num) => {
-  const { resolution } = canvasViewportConfig.dimensions.ref.current
-      changeDimensions({
-        resolution: {
-          width: resolution.width,
-          height: num
-        }
-      }
-      )
+      const { resolution } = viewportManager.getDimensions()
+      changeResolution({
+        width: resolution.width,
+        height: num
+      })
     }, 500)
     , [])
 

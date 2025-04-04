@@ -6,16 +6,29 @@ export class AnimationManager {
   frameCounter: number = 0; // PLACEHOLDER NAME
   intervalId: number | null = null  
 
-  async frameToObjectURL (frame: FrameData) {
-    const blob = await frame.buffer.canvas.convertToBlob()
-    const objectURL = URL.createObjectURL(blob) 
-    return objectURL
+  async blobToBase64PNG (blob: Blob): Promise<string> {
+    return new Promise(res => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        if (!reader.result || typeof reader.result !== "string") {
+          throw new Error("Something went wrong while loading frame")
+        }
+        res(reader.result)
+      } 
+      reader.readAsDataURL(blob)
+    })
   }
 
-  async batchFramesToObjectURLs (frames: Array<FrameData>) {
+  async frameToBase64PNG (frame: FrameData) {
+      const blob = await frame.buffer.canvas.convertToBlob()
+      const png = await this.blobToBase64PNG(blob)
+      return png
+  }
+
+  async batchFramesToBase64PNGs (frames: Array<FrameData>) {
     const blobs = await Promise.all(frames.map(async frame => frame.buffer.canvas.convertToBlob()))
-    const objectURLs = blobs.map(blob => URL.createObjectURL(blob)) 
-    return objectURLs
+    const pngs = await Promise.all(blobs.map(blob => this.blobToBase64PNG(blob))) 
+    return pngs
   }
 
   async saveFrameAsObjectURL (frame: FrameData) {
@@ -24,38 +37,31 @@ export class AnimationManager {
     const index = this.images.length
     this.images.push("")
 
-    const objectURL = await this.frameToObjectURL(frame)
-    this.images.splice(index, 1, objectURL)
+    const png = await this.frameToBase64PNG(frame)
+    this.images.splice(index, 1, png)
   }
 
-  async updateObjectURL (newFrame: FrameData, index: number) {
+  async updateBase64PNG (newFrame: FrameData, index: number) {
     if (index>=this.images.length) {
       return null
     }
 
-    const updatedObjectURL = await this.frameToObjectURL(newFrame)
-    const oldObjectURL = this.images.splice(index, 1, updatedObjectURL)
+    const updatedBase64PNG = await this.frameToBase64PNG(newFrame)
     
-    URL.revokeObjectURL(oldObjectURL[0])
-    return updatedObjectURL
+    return updatedBase64PNG
   }
 
-  async loadFramesAsObjectURLs (frames: Array<FrameData>) {
-    // revoke previous if any exist
-    this.images.forEach(objURL => URL.revokeObjectURL(objURL))
-    
-    const objectURLs = await this.batchFramesToObjectURLs(frames)
-    this.images = objectURLs
-    return objectURLs
+  async loadFramesAsBase64PNGs (frames: Array<FrameData>) {
+    this.images = await this.batchFramesToBase64PNGs(frames)
   }
 
-  deleteObjectURL (index: number) {
+  deleteBase64PNG (index: number) {
     if (index>=this.images.length || this.images.length === 1) {
       return
     }
 
-    const deletedObjectURL = this.images.splice(index, 1)
-    URL.revokeObjectURL(deletedObjectURL[0])
+    const deletedPNG = this.images.splice(index, 1)
+    return deletedPNG
   }
 
   setIntervalId (id: number) {
@@ -69,6 +75,7 @@ export class AnimationManager {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId)
     }
+    console.debug(this.images)
   }
 
 

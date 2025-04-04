@@ -42,6 +42,11 @@ export class CanvasDrawStack {
     return this.step.length > 0
   }
 
+  clearMetastack () {
+    this.metaStack = []
+    this.metaStackIndex = -1
+  }
+
   setCurrentStack (metaStackIndex: number) {
     this.metaStackIndex = metaStackIndex
   } 

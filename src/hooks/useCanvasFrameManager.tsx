@@ -3,6 +3,7 @@ import { CanvasFrameManager, FrameData } from "../classes/CanvasFrameManager"
 import { CanvasDrawStack, Step } from "../classes/CanvasDrawStack"
 import { AnimationManager } from "../classes/AnimationManager";
 import { Dimensions } from "../types/types";
+import { decodeFrames, encode } from "modern-gif";
 
 
 export interface FrameManagerApi {
@@ -53,7 +54,7 @@ export const useCanvasFrameManager = () => {
   // temporary Ill do it in a better way lmao
   // first I need to solve how to play and update the animation preview properly
   const downloadFrameAsImage = (imageType: "jpg" | "jpeg" | "png") => {
-    const objectUrl = animationManager.frameToObjectURL(frameManager.getAllFrames()[0])
+    const objectUrl = animationManager.frameToBase64PNG(frameManager.getAllFrames()[0])
 
     objectUrl.then(res => {
       const a = document.createElement("a")
@@ -73,7 +74,7 @@ export const useCanvasFrameManager = () => {
     forceUpdate(r => r + 1)
 
     const allFrames = frameManager.getAllFrames()
-    animationManager.loadFramesAsObjectURLs(allFrames)
+    animationManager.loadFramesAsBase64PNGs(allFrames)
   }
 
   const getCurrentFrame = () => frameManager.getCurrent()
@@ -104,7 +105,7 @@ export const useCanvasFrameManager = () => {
   const deleteFrame = (frameIndex: number) => {
     frameManager.delete(frameIndex)
     metaStack.deleteStack(frameIndex)
-    animationManager.deleteObjectURL(frameIndex)
+    animationManager.deleteBase64PNG(frameIndex)
     forceUpdate(r => r + 1)
   }
 
@@ -118,6 +119,7 @@ export const useCanvasFrameManager = () => {
 
     forceUpdate(r => r + 1)
     startAnimationPreview()
+    return frame
   }
 
   const updateStep = (stepData: Step) => {
@@ -167,7 +169,7 @@ export const useCanvasFrameManager = () => {
 
     if (!frame) return
 
-    await animationManager.updateObjectURL(frame, index)
+    await animationManager.updateBase64PNG(frame, index)
   } 
 
   const changeAnimationSpeed = (speed: number) => {
@@ -185,6 +187,60 @@ export const useCanvasFrameManager = () => {
   }
 
   const willAddToStack = () => metaStack.isStepPopulated()
+
+
+  const exportAsGif = async () => {
+    const frames = getAllFrames()
+
+    const output = await encode({
+      ...frameManager.getResolution(),
+      frames: frames.map(frame => ({data: frame.buffer.canvas, delay: 1000/animationSpeed}))
+    })
+
+    const blob = new Blob([output], { type: 'image/png' })
+    const gifObjectUrl = URL.createObjectURL(blob)
+
+    const a = document.createElement("a")
+    a.href = gifObjectUrl;
+    a.download = "animatedCanvas.gif"
+    a.click()
+
+    URL.revokeObjectURL(gifObjectUrl)
+  }
+
+  const decodeGif = async (gifSource: any) => {
+    const buffer = await gifSource
+
+    const frames = decodeFrames(buffer)
+
+    if (!frames.length) {
+      throw new Error("Invalid gif")
+    }
+
+    if (frames[0].width === 0 || frames[0].height === 0) {
+      throw new Error("Invalid gif")
+    }
+
+    deleteAllFrames()
+    console.debug("huh", frames.length)
+    
+    return {
+      width: frames[0].width,
+      height: frames[0].height,
+      frameData: frames.map(frame => frame.data)
+    }
+  }
+
+  const loadFullAnimation = () => {
+    const allFrames = frameManager.getAllFrames()
+    animationManager.loadFramesAsBase64PNGs(allFrames)
+    startAnimationPreview()
+  }
+
+  const deleteAllFrames = () => {
+    frameManager.clearFrameStack()
+    metaStack.clearMetastack()
+  } 
 
   return {
     getCurrentFrame,
@@ -208,6 +264,11 @@ export const useCanvasFrameManager = () => {
     startAnimationPreview,
     pauseAnimationPreview,
     willAddToStack,
+    deleteAllFrames,
+    
+    exportAsGif,
+    decodeGif,
+    loadFullAnimation,
 
     downloadFrameAsImage,
 

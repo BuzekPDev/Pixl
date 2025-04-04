@@ -703,9 +703,7 @@ export const CanvasProvider = ({
     const buffer = offscreenBuffer.hoverOverlayBuffer
 
     const { trueSize, viewportPosition, viewport, resolution, scale, zoom } = viewportManager
-    const { width: drawingAreaWidth, height: drawingAreaHeight } = viewport
     const { width: viewportWidth, height: viewportHeight } = trueSize
-    const { x: drawingAreaX, y: drawingAreaY } = viewportPosition
     const { width: bufferWidth, height: bufferHeight } = resolution
 
     ctx.clearRect(0, 0, viewportWidth, viewportHeight)
@@ -728,13 +726,7 @@ export const CanvasProvider = ({
     buffer.fillStyle = "rgba(0, 0, 0, 0.3)"
     buffer.fillRect(x, y, toolSizeX, toolSizeY)
 
-    ctx.drawImage(
-      buffer.canvas,
-      drawingAreaX,
-      drawingAreaY,
-      drawingAreaWidth * zoom,
-      drawingAreaHeight * zoom
-    )
+    drawCanvas(ctx, buffer)
   }
 
   const clearHoverMask = () => {
@@ -868,7 +860,7 @@ export const CanvasProvider = ({
       return
     }
 
-    const zoomAmount = Math.sign(deltaY) * 0.05
+    const zoomAmount = Math.sign(deltaY) * 0.05 // 5% zoom
     const { zoom, viewportPosition, viewport, resolution } = viewportManager.getDimensions()
 
     scroll.current.scrolled = true
@@ -943,6 +935,90 @@ export const CanvasProvider = ({
     viewportManager.changeTrueSize(trueSize)
   }
 
+  const importGif = async (gif: File) => {
+    const buffer = await gif.arrayBuffer()
+    // get gif frames & res
+    const { width, height, frameData } = await frameManager.decodeGif(buffer)
+    
+    // change resolution to gif res
+    clearCanvas()
+    resizeBuffers(width, height)
+
+    // center viewport so it's fully visible when loaded
+    viewportManager.rescale()
+    viewportManager.center()
+
+    // add each frame to the frame stack and undo metastack
+    frameData.forEach(async (frame) => {
+      const added = frameManager.addFrame()
+      const imageData = new ImageData(frame, width, height)
+      added?.buffer.putImageData(imageData, 0, 0)
+    })
+
+    // load the frames in the animation preview
+    frameManager.loadFullAnimation()
+    drawCanvas()
+    drawTransparencyGrid()
+  }
+
+  const importImage = async (image: File) => {
+    const objectURL = URL.createObjectURL(image)
+    const img = new Image()
+    clearCanvas()
+
+    img.onload = () => {
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+
+      frameManager.deleteAllFrames()
+      resizeBuffers(width,height)
+
+      viewportManager.rescale()
+      viewportManager.center()
+
+      const frame = frameManager.addFrame()
+
+      frame?.buffer.drawImage(img, 0, 0)
+
+      drawCanvas()
+      drawTransparencyGrid()
+      frameManager.updateAnimationPreview()
+    }
+
+    img.src = objectURL
+  }
+
+  const importFile = (file: File) => {
+    switch (true) {
+      case /^image\/gif$/.test(file.type):
+        importGif(file)
+        break;
+      case /^image\/(jpg|png|jpeg)$/.test(file.type):
+        importImage(file)
+        break;
+      default: 
+        alert("Unsupported file type.")
+    }
+  }
+
+  // TODO 
+
+  // HIGH PRIORITY (in order)
+  // export/import file system for images AND gifs
+  // UI 
+  // pinch-to-zoom on touchscreen devices
+  // deploy
+
+  // MID PRIORITY (out of order)
+  // color palette (the system itself is mostly ready, I just can't decide on the ui design)
+  // drawing optimization, prevent redraws on movement with no coordinate change 
+  // fix hand tool out of bounds issue
+  // fix hand tool snap-to-cursor issue
+  // limit draw stack depth
+  
+  // LOW PRIORITY
+  // adjust position on window resize/zoom instead of resetting it
+
   return (
     <canvasContext.Provider
       value={{
@@ -983,7 +1059,6 @@ export const CanvasProvider = ({
           setIsReady(true)
           drawCanvas()
 
-          viewportManager.changeResolution(resolution)
           viewportManager.changeTrueSize(trueSize)
         },
         frameManager,
@@ -1022,7 +1097,9 @@ export const CanvasProvider = ({
             draw: drawOnionSkin,
             clear: clearOnionSkin
           }
-        }
+        },
+        importGif,
+        importFile
       }}
     >
       {children}

@@ -51,22 +51,6 @@ export const useCanvasFrameManager = () => {
     startAnimationPreview()
   }, [])
 
-  // temporary Ill do it in a better way lmao
-  // first I need to solve how to play and update the animation preview properly
-  const downloadFrameAsImage = (imageType: "jpg" | "jpeg" | "png") => {
-    const objectUrl = animationManager.frameToBase64PNG(frameManager.getAllFrames()[0])
-
-    objectUrl.then(res => {
-      const a = document.createElement("a")
-
-      a.href = res
-      a.download = `coolassimage.${imageType}`
-
-      a.click()
-
-      URL.revokeObjectURL(res)
-    })
-  }
 
   // this should be done with a worker I think, might look into it in the future
   const changeResolution = async (resolution: Dimensions) => {
@@ -114,7 +98,7 @@ export const useCanvasFrameManager = () => {
     metaStack.addStack()
 
     if (frame) {
-      animationManager.saveFrameAsObjectURL(frame)
+      animationManager.saveFrameAsBase64PNG(frame)
     }
 
     forceUpdate(r => r + 1)
@@ -208,6 +192,20 @@ export const useCanvasFrameManager = () => {
     URL.revokeObjectURL(gifObjectUrl)
   }
 
+  const exportAsImage = async (type: "png" | "jpeg", name: string) => {
+    const frame = frameManager.getCurrent()
+
+    if (!frame) {
+      throw new Error("No frames to export")
+    }
+    
+    const encodedString = await animationManager.frameToBase64image(frame, type)
+    const a = document.createElement("a");
+    a.download = `${name}.${type}`;
+    a.href = encodedString
+    a.click()
+  }
+
   const decodeGif = async (gifSource: any) => {
     const buffer = await gifSource
 
@@ -222,7 +220,6 @@ export const useCanvasFrameManager = () => {
     }
 
     deleteAllFrames()
-    console.debug("huh", frames.length)
     
     return {
       width: frames[0].width,
@@ -263,14 +260,13 @@ export const useCanvasFrameManager = () => {
     changeAnimationSpeed,
     startAnimationPreview,
     pauseAnimationPreview,
+    loadFullAnimation,
     willAddToStack,
     deleteAllFrames,
     
     exportAsGif,
+    exportAsImage,
     decodeGif,
-    loadFullAnimation,
-
-    downloadFrameAsImage,
 
     // temporary solution to some problem I forgot
     size: () => frameManager.size

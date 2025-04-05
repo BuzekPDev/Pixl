@@ -1,4 +1,4 @@
-import { Dimensions } from "../hooks/useCanvasViewportConfig";
+import { Dimensions } from "../types/types";
 
 export type FrameData = {
   id: number;
@@ -41,6 +41,13 @@ export class CanvasFrameManager {
 
   getAllFrames () {
     return this.frames
+  }
+
+  clearFrameStack () {
+    this.frames = []
+    this.frameIndex = -1
+    this.frameCount = 0
+    this.size = 0
   }
 
   setCurrent (frameIndex: number) {

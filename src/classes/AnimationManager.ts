@@ -1,3 +1,4 @@
+import { ImageType } from "../types/types";
 import { FrameData } from "./CanvasFrameManager";
 
 export class AnimationManager {
@@ -19,25 +20,25 @@ export class AnimationManager {
     })
   }
 
-  async frameToBase64PNG (frame: FrameData) {
-      const blob = await frame.buffer.canvas.convertToBlob()
+  async frameToBase64image (frame: FrameData, type: ImageType) {
+      const blob = await frame.buffer.canvas.convertToBlob({type: `image/${type}`})
       const png = await this.blobToBase64PNG(blob)
       return png
   }
 
-  async batchFramesToBase64PNGs (frames: Array<FrameData>) {
-    const blobs = await Promise.all(frames.map(async frame => frame.buffer.canvas.convertToBlob()))
+  async batchFramesToBase64images (frames: Array<FrameData>, type: ImageType) {
+    const blobs = await Promise.all(frames.map(async frame => frame.buffer.canvas.convertToBlob({type: `image/${type}`})))
     const pngs = await Promise.all(blobs.map(blob => this.blobToBase64PNG(blob))) 
     return pngs
   }
 
-  async saveFrameAsObjectURL (frame: FrameData) {
+  async saveFrameAsBase64PNG (frame: FrameData) {
     // reserve the index synchronously to prevent wrong insertion order
     // due to a losing race condition
     const index = this.images.length
     this.images.push("")
 
-    const png = await this.frameToBase64PNG(frame)
+    const png = await this.frameToBase64image(frame, "png")
     this.images.splice(index, 1, png)
   }
 
@@ -46,13 +47,13 @@ export class AnimationManager {
       return null
     }
 
-    const updatedBase64PNG = await this.frameToBase64PNG(newFrame)
-    
+    const updatedBase64PNG = await this.frameToBase64image(newFrame, "png")
+    this.images.splice(index, 1, updatedBase64PNG)
     return updatedBase64PNG
   }
 
   async loadFramesAsBase64PNGs (frames: Array<FrameData>) {
-    this.images = await this.batchFramesToBase64PNGs(frames)
+    this.images = await this.batchFramesToBase64images(frames, "png")
   }
 
   deleteBase64PNG (index: number) {
@@ -75,11 +76,7 @@ export class AnimationManager {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId)
     }
-    console.debug(this.images)
   }
-
-
-  // PLACEHOLDER NAMES
 
   getCurrentAnimationFrame () {
     return this.images[this.frameCounter]

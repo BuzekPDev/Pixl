@@ -18,6 +18,7 @@ export interface CanvasContext {
   setup: (args: CanvasSetup) => void,
   toolsController: ToolsController;
   canvasController: CanvasController;
+  fileController: FileController;
 
   frameManager: FrameManagerApi;
   viewportManager: CanvasViewportManager;
@@ -79,6 +80,12 @@ export interface CanvasDimensions {
   // or at least seperate zoom and scale in the zooming logic lol
   scale: number;
   zoom: number;
+}
+
+export interface FileController {
+  importFile: (file: File) => void;
+  exportGif: (name: string) => void;
+  exportImage: (type: "png" | "jpeg", name: string) => void;
 }
 
 export interface OnionSkinConfig {
@@ -942,6 +949,7 @@ export const CanvasProvider = ({
     
     // change resolution to gif res
     clearCanvas()
+    clearOnionSkin()
     resizeBuffers(width, height)
 
     // center viewport so it's fully visible when loaded
@@ -965,6 +973,7 @@ export const CanvasProvider = ({
     const objectURL = URL.createObjectURL(image)
     const img = new Image()
     clearCanvas()
+    clearOnionSkin()
 
     img.onload = () => {
       const width = img.naturalWidth;
@@ -1004,7 +1013,7 @@ export const CanvasProvider = ({
   // TODO 
 
   // HIGH PRIORITY (in order)
-  // export/import file system for images AND gifs
+  // export/import file system for images AND gifs - DONE
   // UI 
   // pinch-to-zoom on touchscreen devices
   // deploy
@@ -1098,8 +1107,11 @@ export const CanvasProvider = ({
             clear: clearOnionSkin
           }
         },
-        importGif,
-        importFile
+        fileController: {
+          importFile,
+          exportGif: frameManager.exportAsGif,
+          exportImage: frameManager.exportAsImage
+        }
       }}
     >
       {children}

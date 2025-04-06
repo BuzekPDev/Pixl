@@ -32,6 +32,7 @@ export const Canvas = ({
   useEffect(() => {
     const keyboardHandler = (e: KeyboardEvent) => {
       const {selected, undo, redo} = api.toolsController
+      if ((e.target as HTMLElement).tagName === "INPUT") return
       if (e.ctrlKey) {
         switch (e.code) {
           case "KeyZ": 
@@ -95,19 +96,19 @@ export const Canvas = ({
   return (
     <div className="relative">
       <canvas
-        className="touch-none w-full h-full -z-10 absolute top-0 left-0 pointer-events-none [image-rendering:pixelated]"
+        className="touch-none w-full h-full -z-10 absolute top-0 left-0 pointer-events-none pixelated"
         width={width}
         height={height} 
         ref={transparencyGridCanvasRef}
       ></canvas>
       <canvas
-        className="touch-none w-full h-full z-20 absolute top-0 left-0 pointer-events-none [image-rendering:pixelated]"
+        className="touch-none w-full h-full z-20 absolute top-0 left-0 pointer-events-none pixelated"
         width={width}
         height={height} 
         ref={onionSkinCanvasRef}
       ></canvas>
       <canvas
-        className="touch-none w-full h-full [image-rendering:pixelated]"
+        className="touch-none w-full h-full pixelated"
         width={width}
         height={height} 
         ref={canvasRef}
@@ -160,7 +161,7 @@ export const Canvas = ({
       >
       </canvas>
       <canvas
-        className="touch-none w-full h-full absolute top-0 left-0 pointer-events-none [image-rendering:pixelated]"
+        className="touch-none w-full h-full absolute top-0 left-0 pointer-events-none pixelated"
         width={width}
         height={height} 
         ref={hoverOverlayCanvasRef}

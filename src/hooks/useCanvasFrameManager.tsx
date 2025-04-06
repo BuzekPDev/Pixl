@@ -4,6 +4,7 @@ import { CanvasDrawStack, Step } from "../classes/CanvasDrawStack"
 import { AnimationManager } from "../classes/AnimationManager";
 import { Dimensions } from "../types/types";
 import { decodeFrames, encode } from "modern-gif";
+import { getAdjustedDimensions } from "../graphicsUtils/getAdjustedDimensions";
 
 
 export interface FrameManagerApi {
@@ -15,7 +16,7 @@ export interface FrameManagerApi {
   getAllFrames: () => Array<FrameData>
   deleteFrame: (frameIndex: number) => void;
   changeResolution: (resolution: Dimensions) => Promise<void>;
-  addFrame: () => void;
+  addFrame: () => FrameData | undefined;
   updateStep: (stepData: Step) => void;
   finishStep: () => void;
   undo: () => Step | null;
@@ -26,9 +27,14 @@ export interface FrameManagerApi {
   animationPreviewRef: RefObject<HTMLDivElement | null>;
   changeAnimationSpeed: (speed: number) => void
   willAddToStack: () => boolean;
+  deleteAllFrames: () => void;
   startAnimationPreview: () => void;
   pauseAnimationPreview: () => void;
-
+  isAnimationPaused: boolean;
+  animationSpeed: number;
+  loadFullAnimation: () => void;
+  exportAsGif: () => void;
+  exportAsImage: (type: "png" | "jpeg", name: string) => void; 
   size: () => number
 }
 
@@ -38,6 +44,7 @@ export const useCanvasFrameManager = () => {
   // needs to cause a rerender the the frame preview updates accordingly
   const [, forceUpdate] = useState(0)
   const [animationSpeed, setAnimationSpeed] = useState(12)
+  const [paused, setPaused] = useState(false)
 
   const frameManager = useMemo(() => new CanvasFrameManager(), [])
   const metaStack = useMemo(() => new CanvasDrawStack(), [])
@@ -120,11 +127,11 @@ export const useCanvasFrameManager = () => {
     const buffer = frameManager.getCurrent()?.buffer
     const { width, height } = frameManager.getResolution()
 
-    const aspectRatio = width / height
+    const previewDims = getAdjustedDimensions(width, height, 128)
 
     if (ctx && buffer) {
-      ctx.clearRect(0, 0, width, height)
-      ctx.drawImage(buffer.canvas, 0, 0, width, height, 0, 0, 64, 64/aspectRatio)
+      ctx.clearRect(0, 0, 128, 128)
+      ctx.drawImage(buffer.canvas, 0, 0, width, height, 0, 0, previewDims.width, previewDims.height)
     }
   }
 
@@ -137,9 +144,11 @@ export const useCanvasFrameManager = () => {
       animationManager.tick()
     }, 1000/speed)
     animationManager.setIntervalId(intervalId)
+    setPaused(false)
   }
 
   const pauseAnimationPreview = () => {
+    setPaused(true)
     animationManager.pauseAnimation()
   }
 
@@ -173,7 +182,7 @@ export const useCanvasFrameManager = () => {
   const willAddToStack = () => metaStack.isStepPopulated()
 
 
-  const exportAsGif = async () => {
+  const exportAsGif = async (name: string) => {
     const frames = getAllFrames()
 
     const output = await encode({
@@ -186,7 +195,7 @@ export const useCanvasFrameManager = () => {
 
     const a = document.createElement("a")
     a.href = gifObjectUrl;
-    a.download = "animatedCanvas.gif"
+    a.download = `${name}.gif`
     a.click()
 
     URL.revokeObjectURL(gifObjectUrl)
@@ -239,6 +248,17 @@ export const useCanvasFrameManager = () => {
     metaStack.clearMetastack()
   } 
 
+  const copyFrame = (frameIndex: number) => {
+    const newFrame = addFrame()
+
+    if (!newFrame) {
+      throw new Error("Something went wrong adding a frame")
+    }
+
+    // will 
+  }
+
+
   return {
     getCurrentFrame,
     getFrame,
@@ -260,15 +280,15 @@ export const useCanvasFrameManager = () => {
     changeAnimationSpeed,
     startAnimationPreview,
     pauseAnimationPreview,
+    isAnimationPaused: paused,
+    animationSpeed,
     loadFullAnimation,
     willAddToStack,
     deleteAllFrames,
-    
     exportAsGif,
     exportAsImage,
     decodeGif,
-
-    // temporary solution to some problem I forgot
+    // temporary solution to some problem I forgot so I'm keeping it here
     size: () => frameManager.size
   }
 }

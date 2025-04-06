@@ -1,81 +1,88 @@
-import { useMemo } from "react"
+import { useEffect } from "react";
+import { FrameData } from "../classes/CanvasFrameManager"
 import { useCanvasApi } from "../context/canvasContext2d"
-import { AnimationPreview } from "./AnimationPreview"
+import { getAdjustedDimensions } from "../graphicsUtils/getAdjustedDimensions";
+import { icons } from "../icons";
 
-export const FramePreview = () => {
+export interface FramePreviewProps {
+  frame: FrameData;
+  pattern: string;
+  frameIndex: number
+}
 
-  const { frameManager, canvasController, viewportManager } = useCanvasApi()
-  const { resolution } = viewportManager.getDimensions()
+export const FramePreview = ({ frame, pattern, frameIndex }: FramePreviewProps) => {
 
-  const aspectRatio = useMemo(() => resolution.width / resolution.height, [resolution])
+  const { frameManager, canvasController } = useCanvasApi()
+  const { resolution } = canvasController.getCanvasDimensions()
 
-  const handleNewFrame = () => {
-    frameManager.addFrame()
-    canvasController.drawCanvas()
+  const currentFrameIndex = frameManager.getCurrentFrameIndex()
+
+  const baseSize = 128
+  const { width, height } = getAdjustedDimensions(resolution.width, resolution.height, baseSize)
+
+  const handleFrameSwitch = () => {
+    frameManager.setCurrentFrame(frameIndex)
     canvasController.clearCanvas()
+    canvasController.drawCanvas()
     if (canvasController.onionSkin.isEnabled) {
       canvasController.onionSkin.clear()
       canvasController.onionSkin.draw()
     }
   }
 
+  const handleDelete = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    e.stopPropagation()
+    frameManager.deleteFrame(frameIndex)
+    canvasController.clearCanvas()
+    canvasController.drawCanvas()
+    if (canvasController.onionSkin.isEnabled) {
+      canvasController.onionSkin.clear()
+      canvasController.onionSkin.draw()
+    }
+  }
+
+  const isSelected = currentFrameIndex === frameIndex
+
   return (
-    <aside className="flex flex-col w-80 h-full pt-20 bg-neutral-800 text-white">
-      <AnimationPreview></AnimationPreview>
-      <label htmlFor="fps">
-        framerate
-        <input type="range" name="fps" min={1} max={24} defaultValue={12} onChange={(e) => {
-          frameManager.changeAnimationSpeed(parseInt(e.target.value))
-        }} />
-          <button onClick={() => frameManager.startAnimationPreview()}>start</button>
-          <button onClick={() => frameManager.pauseAnimationPreview()}>pause</button>
-          <button onClick={() => canvasController.onionSkin.toggle()}>onion skin {canvasController.onionSkin.isEnabled.toString()}</button>
-        </label>
-      <div className="flex flex-col shrink h-full overflow-y-scroll">
-        <button onClick={handleNewFrame}>add new</button>
-        <div className="flex flex-col gap-4 w-full h-full">
-          {Array.from({ length: frameManager.size() }, (_, i) => i).map((_, i) => {
-            const frameData = frameManager.getFrame(i)
-            const frameIndex = frameManager.getCurrentFrameIndex()
+    <li
+      className={`flex justify-center items-center mx-auto w-35 h-35 relative border-2 ${isSelected ? "border-purple-eva" : "border-neutral-600"} group`}
+      onClick={handleFrameSwitch}
+    >
+      <button 
+        className={ // pl & pb only as the list item already has a 2px border
+          `absolute z-20 top-0 right-0 stroke-white pl-0.5 pb-0.5 ${
+            isSelected ? "bg-purple-eva" : "bg-neutral-600 md:hidden group-hover:block"}`
+        }
+        onClick={handleDelete}
+      >
+        {icons.delete}
+      </button>
+      <div className="w-fit h-fit relative">
+        <div style={{ backgroundImage: `url(${pattern})`, width: width, height: height }}></div>
+        <canvas
+          className="top-0 pixelated absolute"
+          width={width}
+          height={height}
+          ref={ref => {
+            if (!ref) return
+            if (frameIndex === currentFrameIndex) {
+              // only need to keep reference to the current frame
+              // since the others won't be updating
+              frameManager.currentFrameRef.current = ref
+            }
+            const ctx = ref.getContext("2d")
+            // throwing an error cause im not actually sure if this CAN happen
+            // and would like to see it in case it does 
+            if (!ctx) {
+              throw new Error("Frame preview canvas context is null")
+            }
 
-            if (!frameData) return null
-
-            return (
-              <button
-                className={`flex flex-col justify-center w-full max-w-full items-center ${frameIndex === i ? "border-2 border-red-500" : ""} overflow-hidden`}
-                onClick={() => {
-                  frameManager.setCurrentFrame(i)
-                  canvasController.clearCanvas()
-                  canvasController.drawCanvas()
-                  if (canvasController.onionSkin.isEnabled) {
-                    canvasController.onionSkin.clear()
-                    canvasController.onionSkin.draw()
-                  }
-                }}>
-                <span>frame {i} <button onClick={(e) => { e.stopPropagation(); frameManager.deleteFrame(i) }}>del</button></span>
-                <canvas
-                  width={64}
-                  height={64/aspectRatio}
-                  style={{aspectRatio}}
-                  key={frameData.id} ref={(ref) => {
-                    if (!ref) return
-                    const ctx = ref?.getContext("2d")
-
-                    if (ctx) {
-                      ctx.clearRect(0, 0, 64, 64/aspectRatio)
-                      ctx.drawImage(frameData.buffer.canvas, 0, 0, resolution.width, resolution.height, 0, 0, 64, 64/aspectRatio)
-
-                      // only need to update the currently selected frame when drawing
-                      if (i === frameIndex) {
-                        frameManager.currentFrameRef.current = ref
-                      }
-                    }
-                  }}></canvas>
-              </button>
-            )
-          })}
-        </div>
+            ctx.imageSmoothingEnabled = false
+            ctx.clearRect(0, 0, width, height)
+            ctx.drawImage(frame.buffer.canvas, 0, 0, resolution.width, resolution.height, 0, 0, width, height)
+          }}
+        />
       </div>
-    </aside>
+    </li>
   )
 }

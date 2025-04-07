@@ -9,7 +9,7 @@ export const ResolutionControls = () => {
     width: 64,
     height: 64
   })
-  const { viewportManager, canvasController, frameManager, importFile, importGif } = useCanvasApi()
+  const { viewportManager, canvasController } = useCanvasApi()
   const { changeResolution } = canvasController
   const { resolution } = viewportManager.getDimensions()
 
@@ -56,7 +56,7 @@ export const ResolutionControls = () => {
         <span className="absolute right-0">px</span>
       </div>
       <div className="flex items-center relative">
-        <div className="absolute left-0">{icons.horizontalArrow}</div>
+        <div className="absolute left-0">{icons.verticalArrow}</div>
         <input
           className="appearance-none w-12 ml-6 pr-2 border-b border-transparent hover:border-neutral-400 focus:border-neutral-400"
           type="number"

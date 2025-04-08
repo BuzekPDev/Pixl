@@ -167,7 +167,9 @@ export const useCanvasFrameManager = () => {
 
   const changeAnimationSpeed = (speed: number) => {
     setAnimationSpeed(speed)
-    startAnimationPreview(speed)
+    if (!paused) {
+      startAnimationPreview(speed)
+    }
   }
 
 

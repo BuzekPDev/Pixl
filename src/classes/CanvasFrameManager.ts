@@ -29,7 +29,6 @@ export class CanvasFrameManager {
     if (this.size === 1) return
     this.frames.splice(frameIndex,1)
     this.size = this.frames.length
-
     if (this.frameIndex >= frameIndex) {
       this.frameIndex = Math.max(Math.min(this.frameIndex - 1, this.size - 1), 0)
     }

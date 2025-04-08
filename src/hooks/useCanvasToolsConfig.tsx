@@ -8,8 +8,8 @@ export interface CanvasToolsConfig {
   eraser: ToolOptions;
   bucket: ToolOptions;
   rect: ToolOptions;
-  zoom: any;
-  hand: any;
+  zoom: ToolOptions;
+  hand: ToolOptions;
 }
 
 export interface SelectedTool {
@@ -73,12 +73,22 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
 
   const [bucketToolOptions,] =
     useState<ToolState>({
-      width: 1
+      width: 0
     })
 
   const [rectToolOptions,] =
     useState<ToolState>({
-      width: 1
+      width: 0
+    })
+
+  const [handToolOptions,] =
+    useState<ToolState>({
+      width: 0
+    })
+
+  const [zoomToolOptions,] =
+    useState<ToolState>({
+      width: 0
     })
 
   return {
@@ -121,7 +131,13 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       ...rectToolOptions,
       setWidth: () => { }
     },
-    zoom: {},
-    hand: {}
+    zoom: {
+      ...zoomToolOptions,
+      setWidth: () => { }
+    },
+    hand: {
+      ...handToolOptions,
+      setWidth: () => { }
+    },
   }
 }

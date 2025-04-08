@@ -440,8 +440,6 @@ export const CanvasProvider = ({
     }
   }
 
-  // might find a use for them eventually
-  // eslint-disable-next-line
   const endHoldAction = () => {
     if (frameManager.willAddToStack()) {
       frameManager.updateFramePreview()

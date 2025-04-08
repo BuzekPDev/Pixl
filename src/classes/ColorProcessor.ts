@@ -38,19 +38,4 @@ export class ColorProcessor {
       color[3] + difference[3]
     ]
   }
-
-  parseRGBAString (_: string) {}
-
-  parseHEXString (_: string) {}
-
-  // rgbToLAB (rgb: RGB) {}
-
-  // labToRGB (lab: LAB) {}
-
-  // getDeltaE (originalColor: LAB, newColor: LAB) {}
-
-  // applyDeltaE (color: number, deltaE: DeltaE) {}
-
-  // undoDeltaE (color: number, deltaE: DeltaE) {}
-
 }

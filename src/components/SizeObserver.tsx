@@ -1,5 +1,5 @@
 import { Children, cloneElement, isValidElement, PropsWithChildren, useLayoutEffect, useRef, useState } from "react"
-import { CanvasProps } from "./Canvas"
+import { CanvasProps } from "./CanvasLayers"
 import { debounce } from "../utils/debounce"
 
 export const SizeObserver = ({ children }: PropsWithChildren) => {

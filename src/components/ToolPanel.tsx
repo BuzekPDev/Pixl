@@ -78,7 +78,7 @@ export const ToolPanel = ({ isOpen, fileName }: { isOpen: boolean, fileName: str
         >
           {icons.gif}
         </ToolButton>
-        <a className="w-fit h-fit my-6" href="https://github.com/BuzekPDev" target="_blank">
+        <a className="w-fit h-fit my-6" href="https://github.com/BuzekPDev/Pixl" target="_blank">
           {icons.github}
         </a>
       </div>

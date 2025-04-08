@@ -13,7 +13,7 @@ interface PaletteState {
   selectedSwatch: number | null
 }
 
-export const PalettePanel = () => {
+export const PaletteTab = () => {
 
   const { colors } = useCanvasApi().canvasToolsConfig
   const [paletteState, setPaletteState] = useState<PaletteState>({
@@ -109,9 +109,13 @@ export const PalettePanel = () => {
             )
           }
         </div>
-        <div className="grid grid-cols-5 row-auto auto-rows-[36px] gap-1 justify-items-center w-50 h-30 mx-auto py-2 scrollable">
+        {/* h-30 only at lg breakpoint so hidden swatches can be seen 
+          on ios&iPadOS as they don't support scrollbar customization  
+        */}
+        <div className="grid grid-cols-5 row-auto auto-rows-[36px] gap-1 justify-items-center w-50 h-24 lg:h-30 mx-auto py-2 scrollable">
           {colors.palette.map((rgba, i) => (
             <Swatch 
+              key={i} // index for key should be fine here
               color={rgba} 
               size="md"
               isSelected={paletteState.selectedSwatch === i}

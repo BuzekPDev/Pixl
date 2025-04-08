@@ -22,7 +22,9 @@ export interface ColorOptions extends ColorState {
   swapActive: () => void;
   setActive: (color: RGBA, index: number) => void;
   setCurrent: (index: number) => void;
-  setPalette: (color: RGBA, index: number) => void
+  setPalette: (color: RGBA, index: number) => void;
+  addToPalette: (color: RGBA) => void;
+  deleteFromPalette: (index: number) => void
 }
 
 export type ToolName = "pencil" | "eraser" | "hand" | "zoom" | "bucket" | "rect"
@@ -69,12 +71,12 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       width: 1
     })
 
-  const [bucketToolOptions, setBucketToolOptions] =
+  const [bucketToolOptions,] =
     useState<ToolState>({
       width: 1
     })
 
-  const [rectToolOptions, setRectToolOptions] =
+  const [rectToolOptions,] =
     useState<ToolState>({
       width: 1
     })
@@ -83,7 +85,7 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
     selectedTool: {
       name: selectedTool.name,
       type: selectedTool.type,
-      set: (name: ToolName, type: ToolType) => setSelectedTool({name, type})
+      set: (name: ToolName, type: ToolType) => setSelectedTool({ name, type })
     },
     colors: {
       ...colorOptions,
@@ -93,6 +95,11 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
           ...c,
           palette: c.palette.map((c: RGBA, i: number) => i === index ? color : c)
         })),
+      addToPalette: (color: RGBA) => setColorOptions(c => ({ ...c, palette: c.palette.concat([color]) })),
+      deleteFromPalette: (index: number) => setColorOptions(c => ({
+        ...c,
+        palette: c.palette.filter((c: RGBA, i: number) => i !== index)
+      })),
       swapActive: () => setColorOptions(o => ({ ...o, activePair: [o.activePair[1], o.activePair[0]] })),
       setActive: (color: RGBA, index: number) => {
         setColorOptions(o => ({ ...o, activePair: o.activePair.map((c, i) => i === index ? color : c) }))

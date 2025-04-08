@@ -26,10 +26,8 @@ export const TabbedPanel = ({ isOpen }: { isOpen: boolean }) => {
         </ToolButton>
       </div>
       <div className="min-h-0">
-        {tab === "animation"
-            ? <AnimationTab />
-            : <PaletteTab />
-          }
+        <AnimationTab isOpen={tab === "animation"}/>
+        <PaletteTab isOpen={tab === "palette"}/>
       </div>
     </aside>
   )

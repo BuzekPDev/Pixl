@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { FrameData } from "../classes/CanvasFrameManager"
 import { useCanvasApi } from "../context/canvasContext2d"
 import { getAdjustedDimensions } from "../graphicsUtils/getAdjustedDimensions";
@@ -51,7 +50,10 @@ export const FramePreview = ({ frame, pattern, frameIndex }: FramePreviewProps) 
       <button 
         className={ // pl & pb only as the list item already has a 2px border
           `absolute z-20 top-0 right-0 stroke-white pl-0.5 pb-0.5 ${
-            isSelected ? "bg-purple-eva" : "bg-neutral-600 md:hidden group-hover:block"}`
+            isSelected 
+              ? "bg-purple-eva" 
+              : "bg-neutral-600 md:hidden group-hover:block"
+            }`
         }
         onClick={handleDelete}
       >

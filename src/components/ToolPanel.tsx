@@ -1,7 +1,7 @@
 import { useCanvasApi } from "../context/canvasContext2d"
 import { icons } from "../icons";
 import { ToolButton } from "./ToolButton"
-import { ColorHub } from "./ColorPalette";
+import { ColorSwap } from "./ColorSwap";
 
 export const ToolPanel = ({ isOpen, fileName }: { isOpen: boolean, fileName: string }) => {
 
@@ -9,7 +9,7 @@ export const ToolPanel = ({ isOpen, fileName }: { isOpen: boolean, fileName: str
 
   return (
     <aside
-      className="flex flex-col justify-between shrink-0 grow-0 items-center min-w-20 w-20 h-full bg-neutral-800 pt-16 stroke-white fill-white"
+      className={`flex flex-col justify-between items-center min-w-19 w-19 h-full bg-neutral-800 pt-14 lg:pt-16 stroke-white fill-white absolute z-60 lg:relative transition-transform lg:translate-0 ${isOpen ? "translate-0" : "-translate-x-full"}`}
     >
       <div className="flex flex-col items-center gap-2">
         <ToolButton
@@ -52,7 +52,7 @@ export const ToolPanel = ({ isOpen, fileName }: { isOpen: boolean, fileName: str
         >
           {icons.rect}
         </ToolButton>
-        <ColorHub />
+        <ColorSwap />
       </div>
       <div className="flex flex-col items-center gap-2">
         <ToolButton

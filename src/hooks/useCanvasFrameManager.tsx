@@ -248,15 +248,13 @@ export const useCanvasFrameManager = () => {
     metaStack.clearMetastack()
   } 
 
-  const copyFrame = (frameIndex: number) => {
-    const newFrame = addFrame()
+  // const copyFrame = (frameIndex: number) => {
+  //   const newFrame = addFrame()
 
-    if (!newFrame) {
-      throw new Error("Something went wrong adding a frame")
-    }
-
-    // will 
-  }
+  //   if (!newFrame) {
+  //     throw new Error("Something went wrong adding a frame")
+  //   }
+  // }
 
 
   return {

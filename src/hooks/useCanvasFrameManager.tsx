@@ -33,8 +33,8 @@ export interface FrameManagerApi {
   isAnimationPaused: boolean;
   animationSpeed: number;
   loadFullAnimation: () => void;
-  exportAsGif: () => void;
-  exportAsImage: (type: "png" | "jpeg", name: string) => void; 
+  exportAsGif: (name: string) => Promise<void>;
+  exportAsImage: (type: "png" | "jpeg", name: string) => Promise<void>; 
   size: () => number
 }
 

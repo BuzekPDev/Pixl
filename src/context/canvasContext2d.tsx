@@ -1044,7 +1044,6 @@ export const CanvasProvider = ({
             canvasRenderingContext.current = ctx
             ctx.imageSmoothingEnabled = false
           }
-
           if (hoverOverlayCanvasRef.current) {
             const ctx = hoverOverlayCanvasRef.current.getContext("2d") as CanvasRenderingContext2D
             hoverOverlayCanvasRenderingContext.current = ctx

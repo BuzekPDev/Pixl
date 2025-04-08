@@ -9,10 +9,12 @@ export const AnimationPreview = ({pattern}: {pattern: string}) => {
   
   return (
     <div className="w-full h-fit">
-      <div className="flex justify-center items-center w-50 mx-auto px-4 bg-neutral-700">
+      <div className="flex justify-center items-center w-50 mx-auto px-4 bg-neutral-700 text-neutral-400">
         <ResolutionControls />
       </div>
-      <Minimap pattern={pattern}/>
+      <Minimap 
+        pattern={pattern}
+      />
       <div className="flex w-50 mx-auto gap-2 bg-neutral-700 text-neutral-400">
         <button 
           className="transition-colors duration-50 stroke-neutral-400 fill-neutral-400 hover:stroke-neutral-300 hover:fill-neutral-300 p-1"
@@ -22,10 +24,27 @@ export const AnimationPreview = ({pattern}: {pattern: string}) => {
               : frameManager.pauseAnimationPreview()
           }
         >
-          {frameManager.isAnimationPaused ? icons.play : icons.pause}
+          {frameManager.isAnimationPaused 
+            ? icons.play 
+            : icons.pause
+          }
         </button>
-        <input className="w-full" type="range" min={1} max={24} name="framerate" onChange={({target}) => frameManager.changeAnimationSpeed(parseInt(target.value))}/>
-        <label className="px-1 text-nowrap w-14 block shrink-0" htmlFor="framerate">{frameManager.animationSpeed} FPS</label>
+        <input 
+          className="w-full" 
+          type="range" 
+          min={1} 
+          max={24} 
+          name="framerate" 
+          onChange={({target}) => 
+            frameManager.changeAnimationSpeed(parseInt(target.value))
+          }
+        />
+        <label 
+          className="px-1 text-nowrap w-14 block shrink-0" 
+          htmlFor="framerate"
+        >
+          {frameManager.animationSpeed} FPS
+        </label>
       </div>
     </div>
   )

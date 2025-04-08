@@ -1,5 +1,4 @@
 import { icons } from "../icons"
-import Logo from "../assets/Pixl_logo.png"
 import { ToolButton } from "./ToolButton"
 
 export const Header = ({
@@ -20,7 +19,7 @@ export const Header = ({
       className="grid lg:grid-cols-[200px_1fr_200px] grid-cols-[80px_1fr_80px] w-full lg:h-16 h-14 px-4 top-0 left-0 bg-neutral-800 absolute z-70"
     >
       <div className="flex items-center gap-4">
-        <img className="h-10 hidden lg:block" src={Logo} />
+        <img className="h-10 hidden lg:block" src="/assets/Pixl_logo.png" />
         <div className="lg:hidden">
           <ToolButton
             onClick={() => openPanel("tools")}

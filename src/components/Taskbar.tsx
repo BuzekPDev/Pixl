@@ -1,6 +1,5 @@
 import { icons } from "../icons"
 import { ToolButton } from "./ToolButton"
-import logo from "../assets/Pixl_logo.png"
 import { useCanvasApi } from "../context/canvasContext2d"
 
 export const Taskbar = () => {
@@ -14,7 +13,7 @@ export const Taskbar = () => {
       >
         {icons.undo}
       </ToolButton>
-      <img className="h-10" src={logo}/>
+      <img className="h-10" src="/assets/Pixl_logo.png"/>
       <ToolButton
         onClick={toolsController.redo}
       >

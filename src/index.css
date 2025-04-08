@@ -12,6 +12,9 @@
 .scrollable {
   overflow-y: scroll;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+.scrollable.symmetrical {
   scrollbar-gutter: stable both-edges;
 }
 

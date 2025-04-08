@@ -5,7 +5,7 @@ import { getPattern } from "../graphicsUtils/getPattern"
 import { FramePreview } from "./FramePreview"
 import { icons } from "../icons"
 
-export const AnimationTab = () => {
+export const AnimationTab = ({isOpen}: {isOpen: boolean}) => {
 
   const { frameManager, canvasController } = useCanvasApi()
 
@@ -23,7 +23,7 @@ export const AnimationTab = () => {
 
 
   return (
-    <div className="flex flex-col w-full h-full">
+    <div className={`${isOpen ? "flex" : "hidden"} flex-col w-full h-full`}>
       <AnimationPreview
         pattern={pattern}
       />

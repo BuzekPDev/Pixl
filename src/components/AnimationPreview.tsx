@@ -29,16 +29,23 @@ export const AnimationPreview = ({pattern}: {pattern: string}) => {
             : icons.pause
           }
         </button>
-        <input 
-          className="w-full" 
-          type="range" 
-          min={1} 
-          max={24} 
-          name="framerate" 
-          onChange={({target}) => 
-            frameManager.changeAnimationSpeed(parseInt(target.value))
-          }
-        />
+        <div className="flex items-center relative">
+          <div 
+            className="h-1.5 bg-purple-eva rounded-lg pointer-events-none absolute" 
+            style={{
+              width: `${Math.floor(frameManager.animationSpeed/24 * 100)}%`
+          }}/>
+          <input 
+            className="w-full" 
+            type="range" 
+            min={1} 
+            max={24} 
+            name="framerate" 
+            onChange={({target}) => 
+              frameManager.changeAnimationSpeed(parseInt(target.value))
+            }
+          />
+        </div>
         <label 
           className="px-1 text-nowrap w-14 block shrink-0" 
           htmlFor="framerate"

@@ -1,6 +1,4 @@
-// bresenhams line alg
-
-import { Position } from "../hooks/useCanvasViewportConfig";
+import { Position } from "../types/types";
 
 export const drawLine = (x1: number, y1: number, x2: number, y2: number, toolSize: number) => {
   const lineCoords: Array<{ x: number; y: number }> = [];

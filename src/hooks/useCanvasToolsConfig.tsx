@@ -108,7 +108,7 @@ export const useCanvasToolsConfig = (): CanvasToolsConfig => {
       addToPalette: (color: RGBA) => setColorOptions(c => ({ ...c, palette: c.palette.concat([color]) })),
       deleteFromPalette: (index: number) => setColorOptions(c => ({
         ...c,
-        palette: c.palette.filter((c: RGBA, i: number) => i !== index)
+        palette: c.palette.filter((_, i: number) => i !== index)
       })),
       swapActive: () => setColorOptions(o => ({ ...o, activePair: [o.activePair[1], o.activePair[0]] })),
       setActive: (color: RGBA, index: number) => {

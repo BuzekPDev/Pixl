@@ -39,9 +39,9 @@ export class ColorProcessor {
     ]
   }
 
-  parseRGBAString (str: string) {}
+  parseRGBAString (_: string) {}
 
-  parseHEXString (str: string) {}
+  parseHEXString (_: string) {}
 
   // rgbToLAB (rgb: RGB) {}
 

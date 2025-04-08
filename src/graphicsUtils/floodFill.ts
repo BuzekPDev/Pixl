@@ -1,6 +1,6 @@
 import { ColorProcessor, RGBA } from "../classes/ColorProcessor"
 import { FrameManagerApi } from "../hooks/useCanvasFrameManager"
-import { Dimensions } from "../hooks/useCanvasViewportConfig"
+import { Dimensions } from "../types/types"
 
 export const floodFill = (
   x: number, 

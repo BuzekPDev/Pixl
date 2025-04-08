@@ -1,4 +1,4 @@
-import { Position } from "../hooks/useCanvasViewportConfig";
+import { Position } from "../types/types";
 
 export class MovementTracker {
   lastPosition: Position | null = null;

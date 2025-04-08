@@ -1,4 +1,4 @@
-import { Position } from "../hooks/useCanvasViewportConfig"
+import { Position } from "../types/types"
 
 export const getRectWalls = (
   x1: number, 

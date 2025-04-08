@@ -442,7 +442,7 @@ export const CanvasProvider = ({
 
   // might find a use for them eventually
   // eslint-disable-next-line
-  const endHoldAction = (clientX: number, clientY: number) => {
+  const endHoldAction = () => {
     if (frameManager.willAddToStack()) {
       frameManager.updateFramePreview()
       frameManager.updateAnimationPreview()
@@ -669,7 +669,7 @@ export const CanvasProvider = ({
 
   // DRAG TOOLS
 
-  const rectTool = (hoverCoordinates: HoverCoordinates, stage: "start" | "update" | "end") => {
+  const rectTool = (_: HoverCoordinates, stage: "start" | "update" | "end") => {
 
     const rectBounds = actionManager.getRectBounds()
     if (!rectBounds) return

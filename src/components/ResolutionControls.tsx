@@ -18,37 +18,31 @@ export const ResolutionControls = () => {
       setDims(resolution)
     }
   }, [resolution])
-  const widthResizeDebounce = useCallback(debounce(
-    (num) => {
+
+  const resize = useCallback(
+    debounce((dim: { width?: number, height?: number }) => {
       const { resolution } = viewportManager.getDimensions()
       changeResolution({
-        width: num,
-        height: resolution.height
+        ...resolution,
+        ...dim
       })
-    }, 500)
-    , [])
-
-  const heightResizeDebounce = useCallback(debounce(
-    (num) => {
-      const { resolution } = viewportManager.getDimensions()
-      changeResolution({
-        width: resolution.width,
-        height: num
-      })
-    }, 500)
-    , [])
-
+    }, 500),
+    []
+  )
 
   return (
     <div className="flex justify-between w-full py-1 fill-white">
       <div className="flex items-center relative">
-        <div className="absolute left-0">{icons.horizontalArrow}</div>
+        <div className="absolute left-0">
+          {icons.horizontalArrow}
+        </div>
         <input
           className="appearance-none w-12 ml-6 pr-2 border-b border-transparent hover:border-neutral-400 focus:border-neutral-400"
           type="number"
           onChange={({ target }) => {
             const width = Math.min(parseInt(target.value), 512)
-            widthResizeDebounce(width)
+            if (Number.isNaN(width)) return
+            resize({ width })
             setDims(d => ({ ...d, width }))
           }}
           value={dims.width}
@@ -56,13 +50,16 @@ export const ResolutionControls = () => {
         <span className="absolute right-0">px</span>
       </div>
       <div className="flex items-center relative">
-        <div className="absolute left-0">{icons.verticalArrow}</div>
+        <div className="absolute left-0">
+          {icons.verticalArrow}
+        </div>
         <input
           className="appearance-none w-12 ml-6 pr-2 border-b border-transparent hover:border-neutral-400 focus:border-neutral-400"
           type="number"
           onChange={({ target }) => {
             const height = Math.min(parseInt(target.value), 512)
-            heightResizeDebounce(height)
+            if (Number.isNaN(height)) return
+            resize({ height })
             setDims(d => ({ ...d, height }))
           }}
           value={dims.height}

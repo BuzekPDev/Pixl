@@ -1,5 +1,4 @@
 import { PropsWithChildren } from "react"
-import Colorful from "@uiw/react-color-colorful"
 import { RGBA } from "../classes/ColorProcessor"
 
 export interface ColorPickerProps {
@@ -20,7 +19,11 @@ export const Swatch = ({color, onClick, size, isSelected = false, children}: Pro
 
   return (
     <button
-      className={`${SIZE[size]} rounded-lg border-3 border-neutral-500 hover:border-neutral-400`}
+      className={`${SIZE[size]} border-3 ${
+        isSelected 
+          ? "border-purple-eva hover:border-purple-eva-dark" 
+          : "border-neutral-500 hover:border-neutral-400"
+        } rounded-lg  stroke-neutral-400 hover:stroke-neutral-300`}
       style={{backgroundColor:`rgb(${r},${g},${b})`}}
       onClick={onClick}
     >

@@ -7,7 +7,7 @@ Pixl is a minimalist pixel art editor with
  src="https://github.com/user-attachments/assets/0b18b11c-9a3f-434b-8667-9767d72010f1"
  width=400>
 <img 
- src="https://github.com/user-attachments/assets/5cfde086-2320-456f-bed4-de9b3c7f5655"
+ src="https://github.com/user-attachments/assets/90a38e3a-56fc-4a0e-aeb4-9ee59cdca991"
  width=400>
 
 
